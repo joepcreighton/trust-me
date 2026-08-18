@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand colors */
+  --color-cream: #FAF7F2;
+  --color-sage: #8FA58A;
+  --color-sage-dark: #6D8A69;
+  --color-sage-light: #EAF0E8;
+  --color-charcoal: #2D2D2D;
+  --color-muted: #9B9490;
+  --color-card: #FFFFFF;
+
+  /* Category badge colors */
+  --color-cat-beauty: #FCE4EC;
+  --color-cat-home: #E3F2FD;
+  --color-cat-health: #E0F2F1;
+  --color-cat-food: #FFF3E0;
+  --color-cat-fitness: #F3E5F5;
+  --color-cat-pets: #F1F8E9;
+
+  /* Typography */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-dm-serif), Georgia, "Times New Roman", serif;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  background-color: #E8E4DF;
+}
+
+body {
+  background-color: #FAF7F2;
+  color: #2D2D2D;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Smooth tap highlights on mobile */
+button, a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
