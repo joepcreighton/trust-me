@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# trust me
 
-## Getting Started
+A mobile-first social recommendation app where women 18–35 get trusted recommendations from friends — for hairdressers, doctors, cleaners, nail salons, dermatologists, and anything else worth sharing.
 
-First, run the development server:
+**Mental model:** Beli, but for recommendations of anything, not just restaurants.
+
+## This is a prototype
+
+Clickable prototype with mock data — no backend, no auth, no real accounts. Built to share with 10–20 friends to test the concept.
+
+## Stack
+
+- Next.js 16 (App Router) + TypeScript
+- Tailwind CSS v4
+- lucide-react
+- Mock data in `src/lib/mock-data.ts`
+- localStorage for persisting likes, vouches, and saves
+
+## Running locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) — works best in a mobile viewport (430px).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Key interaction model
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **❤️ Like** — social support. "I love this rec."
+- **🤝 Vouch** — trust signal. "I've personally used them and second this."
 
-## Learn More
+Likes and vouches are persisted to localStorage so they survive page refreshes.
 
-To learn more about Next.js, take a look at the following resources:
+## Customizing mock data
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+All seed data lives in `src/lib/mock-data.ts`. Edit `recommendations` to add/remove/change recs, and `users` to change the friend network.
