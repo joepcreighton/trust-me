@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { recommendations, users, currentUser } from "@/lib/mock-data";
+import { recommendations, users, currentUser, Category } from "@/lib/mock-data";
 import { RecommendationCard } from "@/components/recommendation-card";
+import { CategoryFilter } from "@/components/category-filter";
 
 interface Interactions {
   likes: string[];
@@ -18,6 +19,7 @@ export default function HomePage() {
     vouches: [],
     saves: [],
   });
+  const [activeCategory, setActiveCategory] = useState<Category | "All">("All");
 
   useEffect(() => {
     try {
@@ -46,37 +48,56 @@ export default function HomePage() {
 
   const friends = users.filter((u) => u.id !== currentUser.id);
 
+  const filtered =
+    activeCategory === "All"
+      ? recommendations
+      : recommendations.filter((r) => r.category === activeCategory);
+
   return (
     <div className="pt-4 pb-4">
       {/* Feed header */}
-      <div className="px-4 mb-5">
-        <h2 className="font-display text-2xl text-charcoal">
-          From your circle
-        </h2>
+      <div className="px-4 mb-4">
+        <h2 className="font-display text-2xl text-charcoal">From your circle</h2>
         <p className="text-sm text-muted mt-0.5">
           Recommendations from people you trust
         </p>
       </div>
 
+      {/* Category filter */}
+      <div className="mb-4">
+        <CategoryFilter active={activeCategory} onChange={setActiveCategory} />
+      </div>
+
       {/* Cards */}
-      {recommendations.map((rec) => {
-        const recommender = users.find((u) => u.id === rec.recommenderId)!;
-        return (
-          <RecommendationCard
-            key={rec.id}
-            rec={rec}
-            recommender={recommender}
-            isLiked={interactions.likes.includes(rec.id)}
-            isVouched={interactions.vouches.includes(rec.id)}
-            isSaved={interactions.saves.includes(rec.id)}
-            onToggleLike={() => toggle("likes", rec.id)}
-            onToggleVouch={() => toggle("vouches", rec.id)}
-            onToggleSave={() => toggle("saves", rec.id)}
-            friends={friends}
-            currentUserAvatar={currentUser.avatar}
-          />
-        );
-      })}
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
+          <p className="text-muted text-sm">
+            No {activeCategory} recommendations yet.
+          </p>
+          <p className="text-muted/60 text-xs mt-1">
+            Be the first to share one!
+          </p>
+        </div>
+      ) : (
+        filtered.map((rec) => {
+          const recommender = users.find((u) => u.id === rec.recommenderId)!;
+          return (
+            <RecommendationCard
+              key={rec.id}
+              rec={rec}
+              recommender={recommender}
+              isLiked={interactions.likes.includes(rec.id)}
+              isVouched={interactions.vouches.includes(rec.id)}
+              isSaved={interactions.saves.includes(rec.id)}
+              onToggleLike={() => toggle("likes", rec.id)}
+              onToggleVouch={() => toggle("vouches", rec.id)}
+              onToggleSave={() => toggle("saves", rec.id)}
+              friends={friends}
+              currentUserAvatar={currentUser.avatar}
+            />
+          );
+        })
+      )}
     </div>
   );
 }
