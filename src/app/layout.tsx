@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, DM_Serif_Display } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/app-shell";
+import { UserRecsProvider } from "@/lib/user-recs-context";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -37,7 +38,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${inter.variable} ${dmSerif.variable}`}>
       <body>
-        <AppShell>{children}</AppShell>
+        <UserRecsProvider>
+          <AppShell>{children}</AppShell>
+        </UserRecsProvider>
       </body>
     </html>
   );

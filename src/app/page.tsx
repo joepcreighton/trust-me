@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { recommendations, users, currentUser, Category } from "@/lib/mock-data";
+import { useUserRecs } from "@/lib/user-recs-context";
 import { RecommendationCard } from "@/components/recommendation-card";
 import { CategoryFilter } from "@/components/category-filter";
 
@@ -14,6 +15,7 @@ interface Interactions {
 const STORAGE_KEY = "trust-me-interactions";
 
 export default function HomePage() {
+  const { userRecs } = useUserRecs();
   const [interactions, setInteractions] = useState<Interactions>({
     likes: [],
     vouches: [],
@@ -26,7 +28,7 @@ export default function HomePage() {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) setInteractions(JSON.parse(stored));
     } catch {
-      // ignore parse errors
+      // ignore
     }
   }, []);
 
@@ -40,7 +42,7 @@ export default function HomePage() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       } catch {
-        // ignore storage errors
+        // ignore
       }
       return updated;
     });
@@ -48,10 +50,13 @@ export default function HomePage() {
 
   const friends = users.filter((u) => u.id !== currentUser.id);
 
+  // User-posted recs appear at the top; mock data fills the rest
+  const allRecs = [...userRecs, ...recommendations];
+
   const filtered =
     activeCategory === "All"
-      ? recommendations
-      : recommendations.filter((r) => r.category === activeCategory);
+      ? allRecs
+      : allRecs.filter((r) => r.category === activeCategory);
 
   return (
     <div className="pt-4 pb-4">
@@ -71,16 +76,13 @@ export default function HomePage() {
       {/* Cards */}
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
-          <p className="text-muted text-sm">
-            No {activeCategory} recommendations yet.
-          </p>
-          <p className="text-muted/60 text-xs mt-1">
-            Be the first to share one!
-          </p>
+          <p className="text-muted text-sm">No {activeCategory} recommendations yet.</p>
+          <p className="text-muted/60 text-xs mt-1">Be the first to share one!</p>
         </div>
       ) : (
         filtered.map((rec) => {
-          const recommender = users.find((u) => u.id === rec.recommenderId)!;
+          const recommender =
+            users.find((u) => u.id === rec.recommenderId) ?? currentUser;
           return (
             <RecommendationCard
               key={rec.id}
