@@ -55,6 +55,93 @@ export const users: User[] = [
   { id: "sofia", name: "Sofia Mendez", username: "sofiam", avatar: "https://i.pravatar.cc/150?u=sofia-mendez" },
 ];
 
+// Ava's inner circle — used by Discover to rank trust tiers
+export const avasDirectFriendIds = new Set([
+  "maya", "sarah", "katie", "priya", "zoe", "emma", "lily", "nadia",
+]);
+// Friends-of-friends: chloe, hannah, jasmine, olivia, mia, aisha, sofia
+
+// ─── Ask types ────────────────────────────────────────────────────────────────
+
+export interface AskReply {
+  replierId: string;
+  recId: string;
+  note: string;
+}
+
+export interface Ask {
+  id: string;
+  askerId: string;
+  question: string;
+  category?: Category;
+  timestamp: string;
+  replies: AskReply[];
+}
+
+export const mockAsks: Ask[] = [
+  {
+    id: "a1",
+    askerId: "emma",
+    question: "Looking for a really good therapist in Brooklyn — specializes in anxiety, sliding scale preferred. Feeling overwhelmed by options. Help!",
+    category: "Health",
+    timestamp: "2026-08-18T14:00:00Z",
+    replies: [
+      {
+        replierId: "mia",
+        recId: "r13",
+        note: "Dr. Kim Lee at Roots Therapy changed my life. Sliding scale from $40, telehealth too. DM me!",
+      },
+      {
+        replierId: "sofia",
+        recId: "r30",
+        note: "The Therapy Collective in Williamsburg — all WOC therapists, group + individual. So good.",
+      },
+    ],
+  },
+  {
+    id: "a2",
+    askerId: "priya",
+    question: "Who does the best gel manicures in Williamsburg or BK that actually last 3 weeks?",
+    category: "Beauty",
+    timestamp: "2026-08-17T20:00:00Z",
+    replies: [
+      {
+        replierId: "katie",
+        recId: "r3",
+        note: "MANI BY JEN. Hands down. Been going 2 years, never chips. Book her like a month out though.",
+      },
+    ],
+  },
+  {
+    id: "a3",
+    askerId: "lily",
+    question: "Need a solid handyman in Bushwick — TV mount + IKEA assembly. Not trying to get overcharged.",
+    category: "Home",
+    timestamp: "2026-08-17T11:00:00Z",
+    replies: [
+      {
+        replierId: "jasmine",
+        recId: "r11",
+        note: "Marco from Fix It Right. Booked him last month — reasonable, no mansplaining, cleaned up after.",
+      },
+    ],
+  },
+  {
+    id: "a4",
+    askerId: "zoe",
+    question: "Hot yoga recs in West Village? Looking for somewhere non-intimidating for a beginner.",
+    category: "Fitness",
+    timestamp: "2026-08-16T16:00:00Z",
+    replies: [
+      {
+        replierId: "priya",
+        recId: "r19",
+        note: "Studio Sol is SO welcoming for beginners. The intro offer is $40 for 2 weeks unlimited 🔥",
+      },
+    ],
+  },
+];
+
 export const recommendations: Recommendation[] = [
   {
     id: "r1",
