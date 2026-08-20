@@ -12,6 +12,8 @@ export interface User {
   name: string;
   username: string;
   avatar: string;
+  cities?: string[];
+  friends: string[];
 }
 
 export interface Recommendation {
@@ -34,32 +36,76 @@ export const currentUser: User = {
   name: "Ava Chen",
   username: "avachen",
   avatar: "https://i.pravatar.cc/150?u=ava-chen",
+  cities: ["San Diego", "Denver"],
+  friends: ["maya", "sarah", "katie", "priya", "zoe", "emma", "lily", "nadia"],
 };
 
 export const users: User[] = [
   currentUser,
-  { id: "maya", name: "Maya Reyes", username: "mayar", avatar: "https://i.pravatar.cc/150?u=maya-reyes" },
-  { id: "sarah", name: "Sarah Kim", username: "sarahk", avatar: "https://i.pravatar.cc/150?u=sarah-kim" },
-  { id: "katie", name: "Katie Walsh", username: "katiew", avatar: "https://i.pravatar.cc/150?u=katie-walsh" },
-  { id: "priya", name: "Priya Sharma", username: "priyaS", avatar: "https://i.pravatar.cc/150?u=priya-sharma" },
-  { id: "zoe", name: "Zoe Laurent", username: "zoelau", avatar: "https://i.pravatar.cc/150?u=zoe-laurent" },
-  { id: "emma", name: "Emma Park", username: "emmapark", avatar: "https://i.pravatar.cc/150?u=emma-park" },
-  { id: "lily", name: "Lily Thompson", username: "lilyt", avatar: "https://i.pravatar.cc/150?u=lily-thompson" },
-  { id: "nadia", name: "Nadia Hassan", username: "nadiah", avatar: "https://i.pravatar.cc/150?u=nadia-hassan" },
-  { id: "chloe", name: "Chloe Martin", username: "chloem", avatar: "https://i.pravatar.cc/150?u=chloe-martin" },
-  { id: "hannah", name: "Hannah Brooks", username: "hannahb", avatar: "https://i.pravatar.cc/150?u=hannah-brooks" },
-  { id: "jasmine", name: "Jasmine Wu", username: "jasminew", avatar: "https://i.pravatar.cc/150?u=jasmine-wu" },
-  { id: "olivia", name: "Olivia Russo", username: "oliviar", avatar: "https://i.pravatar.cc/150?u=olivia-russo" },
-  { id: "mia", name: "Mia Johnson", username: "miaj", avatar: "https://i.pravatar.cc/150?u=mia-johnson" },
-  { id: "aisha", name: "Aisha Okafor", username: "aishao", avatar: "https://i.pravatar.cc/150?u=aisha-okafor" },
-  { id: "sofia", name: "Sofia Mendez", username: "sofiam", avatar: "https://i.pravatar.cc/150?u=sofia-mendez" },
+  {
+    id: "maya", name: "Maya Reyes", username: "mayar", avatar: "https://i.pravatar.cc/150?u=maya-reyes",
+    friends: ["ava", "sarah", "katie", "nadia", "chloe"],
+  },
+  {
+    id: "sarah", name: "Sarah Kim", username: "sarahk", avatar: "https://i.pravatar.cc/150?u=sarah-kim",
+    friends: ["ava", "maya", "katie", "emma", "hannah"],
+  },
+  {
+    id: "katie", name: "Katie Walsh", username: "katiew", avatar: "https://i.pravatar.cc/150?u=katie-walsh",
+    friends: ["ava", "maya", "sarah", "priya", "jasmine"],
+  },
+  {
+    id: "priya", name: "Priya Sharma", username: "priyaS", avatar: "https://i.pravatar.cc/150?u=priya-sharma",
+    friends: ["ava", "katie", "zoe", "nadia", "jasmine"],
+  },
+  {
+    id: "zoe", name: "Zoe Laurent", username: "zoelau", avatar: "https://i.pravatar.cc/150?u=zoe-laurent",
+    friends: ["ava", "priya", "emma", "lily", "chloe"],
+  },
+  {
+    id: "emma", name: "Emma Park", username: "emmapark", avatar: "https://i.pravatar.cc/150?u=emma-park",
+    friends: ["ava", "sarah", "zoe", "lily", "mia"],
+  },
+  {
+    id: "lily", name: "Lily Thompson", username: "lilyt", avatar: "https://i.pravatar.cc/150?u=lily-thompson",
+    friends: ["ava", "zoe", "emma", "nadia", "chloe"],
+  },
+  {
+    id: "nadia", name: "Nadia Hassan", username: "nadiah", avatar: "https://i.pravatar.cc/150?u=nadia-hassan",
+    friends: ["ava", "maya", "priya", "lily", "jasmine"],
+  },
+  {
+    id: "chloe", name: "Chloe Martin", username: "chloem", avatar: "https://i.pravatar.cc/150?u=chloe-martin",
+    friends: ["maya", "zoe", "lily", "hannah", "olivia"],
+  },
+  {
+    id: "hannah", name: "Hannah Brooks", username: "hannahb", avatar: "https://i.pravatar.cc/150?u=hannah-brooks",
+    friends: ["sarah", "chloe", "mia", "sofia"],
+  },
+  {
+    id: "jasmine", name: "Jasmine Wu", username: "jasminew", avatar: "https://i.pravatar.cc/150?u=jasmine-wu",
+    friends: ["katie", "priya", "nadia", "olivia", "aisha"],
+  },
+  {
+    id: "olivia", name: "Olivia Russo", username: "oliviar", avatar: "https://i.pravatar.cc/150?u=olivia-russo",
+    friends: ["chloe", "jasmine", "mia", "aisha"],
+  },
+  {
+    id: "mia", name: "Mia Johnson", username: "miaj", avatar: "https://i.pravatar.cc/150?u=mia-johnson",
+    friends: ["emma", "hannah", "olivia", "sofia"],
+  },
+  {
+    id: "aisha", name: "Aisha Okafor", username: "aishao", avatar: "https://i.pravatar.cc/150?u=aisha-okafor",
+    friends: ["jasmine", "olivia", "sofia"],
+  },
+  {
+    id: "sofia", name: "Sofia Mendez", username: "sofiam", avatar: "https://i.pravatar.cc/150?u=sofia-mendez",
+    friends: ["hannah", "mia", "aisha"],
+  },
 ];
 
-// Ava's inner circle — used by Discover to rank trust tiers
-export const avasDirectFriendIds = new Set([
-  "maya", "sarah", "katie", "priya", "zoe", "emma", "lily", "nadia",
-]);
-// Friends-of-friends: chloe, hannah, jasmine, olivia, mia, aisha, sofia
+// Ava's direct friends — derived from the model so Discover trust tiers stay correct
+export const avasDirectFriendIds = new Set(currentUser.friends);
 
 // ─── Ask types ────────────────────────────────────────────────────────────────
 
@@ -232,7 +278,7 @@ export const recommendations: Recommendation[] = [
     category: "Health",
     subCategory: "Doctor",
     city: "Midtown, NY",
-    blurb: "A GP who actually listens. Books within a week, takes most insurance, and follows up with a text summary of your visit. I didn't know this was possible.",
+    blurb: "A GP who actually listens. Books within a week, takes most insurance, and sends a text summary of your visit. I didn't know this was possible.",
     timestamp: "2026-08-15T12:00:00Z",
     likesCount: 61,
     vouches: ["maya", "sarah", "chloe"],
