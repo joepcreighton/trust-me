@@ -188,7 +188,7 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
       category: cat,
       subCategory: "Hair", // sensible default; full subcat picker is future scope
       city: form.city || "Location TBD",
-      blurb: form.why.trim(),
+      blurb: form.why.trim() ? `Trust me... ${form.why.trim()}` : "",
       photo: form.photo ?? undefined,
       timestamp: new Date().toISOString(),
       likesCount: 0,
@@ -454,18 +454,21 @@ function StepWhy({
         Be specific — details are what make people trust your rec
       </p>
 
-      <div className="relative">
+      <div className="rounded-2xl border border-black/10 bg-white focus-within:border-sage focus-within:ring-2 focus-within:ring-sage/20 transition-all">
+        <div className="px-4 pt-4 pb-0.5">
+          <span className="text-sm font-semibold italic text-sage">Trust me...</span>
+        </div>
         <textarea
           value={why}
           onChange={(e) => onChange(e.target.value)}
           placeholder="e.g. She's been doing my highlights for 3 years and I've never had brassy hair since. Book months in advance but SO worth it."
-          rows={6}
-          className="w-full px-4 py-3.5 rounded-2xl border border-black/10 bg-white text-charcoal text-sm placeholder:text-muted/60 focus:outline-none focus:border-sage focus:ring-2 focus:ring-sage/20 transition-all resize-none leading-relaxed"
+          rows={5}
+          className="w-full px-4 pt-2 pb-10 bg-transparent text-charcoal text-sm placeholder:text-muted/60 focus:outline-none resize-none leading-relaxed"
           autoFocus
         />
         <span
           className={cn(
-            "absolute bottom-3 right-4 text-[11px] font-medium transition-colors",
+            "block text-right px-4 pb-3 text-[11px] font-medium transition-colors -mt-8",
             overLimit ? "text-rose-500" : "text-muted/60"
           )}
         >
