@@ -4,22 +4,25 @@ import { useEffect } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Recommendation, User } from "@/lib/mock-data";
+import type { Disagreement } from "@/lib/use-interactions";
 import { RecommendationCard } from "./recommendation-card";
 
 interface CardSheetProps {
   rec: Recommendation | null;
   onClose: () => void;
-  // Interaction state — pass from parent so sheet stays in sync with the list
   isLiked: boolean;
   isVouched: boolean;
   isSaved: boolean;
   onToggleLike: () => void;
-  onToggleVouch: () => void;
   onToggleSave: () => void;
-  // Context needed by the card
+  onVouch: (chain?: string[]) => void;
+  onUnvouch: () => void;
+  onDisagree: (comment: string) => void;
   recommender: User;
   friends: User[];
   currentUserAvatar: string;
+  vouchChains?: string[][];
+  disagreements?: Disagreement[];
 }
 
 export function CardSheet({
@@ -29,24 +32,25 @@ export function CardSheet({
   isVouched,
   isSaved,
   onToggleLike,
-  onToggleVouch,
   onToggleSave,
+  onVouch,
+  onUnvouch,
+  onDisagree,
   recommender,
   friends,
   currentUserAvatar,
+  vouchChains,
+  disagreements,
 }: CardSheetProps) {
   const isOpen = rec !== null;
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
+    return () => { document.body.style.overflow = ""; };
   }, [isOpen]);
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className={cn(
           "fixed inset-0 z-40 bg-black/40 transition-opacity duration-300",
@@ -56,7 +60,6 @@ export function CardSheet({
         aria-hidden="true"
       />
 
-      {/* Sheet */}
       <div
         className={cn(
           "fixed bottom-0 left-1/2 -translate-x-1/2 z-50",
@@ -66,9 +69,7 @@ export function CardSheet({
         )}
         style={{ transform: isOpen ? "translateY(0)" : "translateY(100%)" }}
       >
-        {/* Sticky close bar */}
         <div className="sticky top-0 z-10 flex items-center justify-between px-5 pt-3 pb-3 bg-cream/95 backdrop-blur-sm">
-          {/* Drag handle — centered absolutely so it doesn't push the X */}
           <div className="absolute left-1/2 -translate-x-1/2 top-3.5 w-10 h-1 bg-black/15 rounded-full" />
           <div className="w-8" />
           <button
@@ -80,7 +81,6 @@ export function CardSheet({
           </button>
         </div>
 
-        {/* Full card */}
         {rec && (
           <div className="pt-2 pb-8">
             <RecommendationCard
@@ -90,10 +90,14 @@ export function CardSheet({
               isVouched={isVouched}
               isSaved={isSaved}
               onToggleLike={onToggleLike}
-              onToggleVouch={onToggleVouch}
               onToggleSave={onToggleSave}
+              onVouch={onVouch}
+              onUnvouch={onUnvouch}
+              onDisagree={onDisagree}
               friends={friends}
               currentUserAvatar={currentUserAvatar}
+              vouchChains={vouchChains}
+              disagreements={disagreements}
             />
           </div>
         )}

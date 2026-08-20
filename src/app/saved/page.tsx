@@ -81,7 +81,7 @@ function SavedItem({
 
 export default function SavedPage() {
   const { userRecs } = useUserRecs();
-  const { interactions, toggle } = useInteractions();
+  const { interactions, toggle, addVouch, removeVouch, addVouchChain, addDisagreement } = useInteractions();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const allRecs = [...userRecs, ...recommendations];
@@ -190,8 +190,16 @@ export default function SavedPage() {
         isVouched={selectedId ? interactions.vouches.includes(selectedId) : false}
         isSaved={selectedId ? interactions.saves.includes(selectedId) : true}
         onToggleLike={() => selectedId && toggle("likes", selectedId)}
-        onToggleVouch={() => selectedId && toggle("vouches", selectedId)}
         onToggleSave={() => selectedId && handleToggleSave(selectedId)}
+        onVouch={(chain) => {
+          if (!selectedId) return;
+          addVouch(selectedId);
+          if (chain) addVouchChain(selectedId, chain);
+        }}
+        onUnvouch={() => selectedId && removeVouch(selectedId)}
+        onDisagree={(comment) => selectedId && addDisagreement(selectedId, comment)}
+        vouchChains={selectedId ? (interactions.vouchChains[selectedId] ?? []) : []}
+        disagreements={selectedId ? (interactions.disagreements[selectedId] ?? []) : []}
       />
     </>
   );

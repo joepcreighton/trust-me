@@ -184,7 +184,7 @@ function AskCard({
 
 export default function AskPage() {
   const { userRecs } = useUserRecs();
-  const { interactions, toggle } = useInteractions();
+  const { interactions, toggle, addVouch, removeVouch, addVouchChain, addDisagreement } = useInteractions();
   const { openRecommendSheet } = useUI();
 
   const [questionText, setQuestionText] = useState("");
@@ -330,8 +330,16 @@ export default function AskPage() {
         isVouched={selectedRec ? interactions.vouches.includes(selectedRec.id) : false}
         isSaved={selectedRec ? interactions.saves.includes(selectedRec.id) : false}
         onToggleLike={() => selectedRec && toggle("likes", selectedRec.id)}
-        onToggleVouch={() => selectedRec && toggle("vouches", selectedRec.id)}
         onToggleSave={() => selectedRec && toggle("saves", selectedRec.id)}
+        onVouch={(chain) => {
+          if (!selectedRec) return;
+          addVouch(selectedRec.id);
+          if (chain) addVouchChain(selectedRec.id, chain);
+        }}
+        onUnvouch={() => selectedRec && removeVouch(selectedRec.id)}
+        onDisagree={(comment) => selectedRec && addDisagreement(selectedRec.id, comment)}
+        vouchChains={selectedRec ? (interactions.vouchChains[selectedRec.id] ?? []) : []}
+        disagreements={selectedRec ? (interactions.disagreements[selectedRec.id] ?? []) : []}
       />
     </>
   );

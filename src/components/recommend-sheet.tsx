@@ -19,6 +19,7 @@ type Step = 1 | 2 | 3 | 4;
 
 interface FormState {
   name: string;
+  provider: string;
   category: FormCategory | null;
   why: string;
   photo: string | null;
@@ -114,6 +115,7 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormState>({
     name: "",
+    provider: "",
     category: null,
     why: "",
     photo: null,
@@ -126,7 +128,7 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
   useEffect(() => {
     if (isOpen) {
       setStep(1);
-      setForm({ name: "", category: null, why: "", photo: null, city: "" });
+      setForm({ name: "", provider: "", category: null, why: "", photo: null, city: "" });
       setSuggestions([]);
       setTimeout(() => inputRef.current?.focus(), 350);
     }
@@ -188,6 +190,7 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
       category: cat,
       subCategory: "Hair", // sensible default; full subcat picker is future scope
       city: form.city || "Location TBD",
+      serviceProvider: form.provider.trim() || undefined,
       blurb: form.why.trim() ? `Trust me... ${form.why.trim()}` : "",
       photo: form.photo ?? undefined,
       timestamp: new Date().toISOString(),
@@ -273,9 +276,11 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
           {step === 1 && (
             <StepName
               name={form.name}
+              provider={form.provider}
               suggestions={suggestions}
               inputRef={inputRef}
               onChange={handleNameChange}
+              onProviderChange={(v) => setForm((f) => ({ ...f, provider: v }))}
               onPickSuggestion={pickSuggestion}
             />
           )}
@@ -334,15 +339,19 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
 
 function StepName({
   name,
+  provider,
   suggestions,
   inputRef,
   onChange,
+  onProviderChange,
   onPickSuggestion,
 }: {
   name: string;
+  provider: string;
   suggestions: string[];
   inputRef: React.RefObject<HTMLInputElement | null>;
   onChange: (v: string) => void;
+  onProviderChange: (v: string) => void;
   onPickSuggestion: (v: string) => void;
 }) {
   return (
@@ -391,6 +400,23 @@ function StepName({
           Not in our suggestions? No problem — any name works.
         </p>
       )}
+
+      {/* Optional service provider */}
+      <div className="mt-5">
+        <p className="text-xs font-semibold text-charcoal/70 uppercase tracking-wide mb-2">
+          Service provider <span className="font-normal normal-case text-muted">— optional</span>
+        </p>
+        <input
+          type="text"
+          value={provider}
+          onChange={(e) => onProviderChange(e.target.value)}
+          placeholder="e.g. Elizabeth (nail tech)"
+          className="w-full px-4 py-3 rounded-2xl border border-black/10 bg-white text-charcoal text-sm placeholder:text-muted/60 focus:outline-none focus:border-sage focus:ring-2 focus:ring-sage/20 transition-all"
+        />
+        <p className="text-xs text-muted mt-1.5">
+          For &ldquo;Poppy Nails — Elizabeth&rdquo; style recommendations
+        </p>
+      </div>
     </div>
   );
 }

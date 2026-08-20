@@ -20,6 +20,7 @@ export interface Recommendation {
   id: string;
   recommenderId: string;
   businessName: string;
+  serviceProvider?: string;
   category: Category;
   subCategory: SubCategory;
   city: string;

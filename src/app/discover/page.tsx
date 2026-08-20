@@ -197,7 +197,7 @@ function FlatResults({
 
 export default function DiscoverPage() {
   const { userRecs } = useUserRecs();
-  const { interactions, toggle } = useInteractions();
+  const { interactions, toggle, addVouch, removeVouch, addVouchChain, addDisagreement } = useInteractions();
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<Category | "All">("All");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -341,8 +341,16 @@ export default function DiscoverPage() {
         isVouched={selectedId ? interactions.vouches.includes(selectedId) : false}
         isSaved={selectedId ? interactions.saves.includes(selectedId) : false}
         onToggleLike={() => selectedId && toggle("likes", selectedId)}
-        onToggleVouch={() => selectedId && toggle("vouches", selectedId)}
         onToggleSave={() => selectedId && toggle("saves", selectedId)}
+        onVouch={(chain) => {
+          if (!selectedId) return;
+          addVouch(selectedId);
+          if (chain) addVouchChain(selectedId, chain);
+        }}
+        onUnvouch={() => selectedId && removeVouch(selectedId)}
+        onDisagree={(comment) => selectedId && addDisagreement(selectedId, comment)}
+        vouchChains={selectedId ? (interactions.vouchChains[selectedId] ?? []) : []}
+        disagreements={selectedId ? (interactions.disagreements[selectedId] ?? []) : []}
       />
     </>
   );

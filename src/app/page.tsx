@@ -49,14 +49,9 @@ function AskFeedCard({ ask }: { ask: Ask }) {
 
   return (
     <div className="mx-4 mb-4 bg-cream rounded-2xl border border-black/8 px-4 py-4">
-      {/* Header */}
       <div className="flex items-center gap-2.5 mb-2.5">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={asker.avatar}
-          alt={asker.name}
-          className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-        />
+        <img src={asker.avatar} alt={asker.name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <p className="text-xs font-semibold text-charcoal">{asker.name}</p>
           <p className="text-[11px] text-muted">{timeAgo(ask.timestamp)}</p>
@@ -71,23 +66,14 @@ function AskFeedCard({ ask }: { ask: Ask }) {
         )}
       </div>
 
-      {/* Question */}
-      <p className="text-sm text-charcoal leading-relaxed">
-        &ldquo;{ask.question}&rdquo;
-      </p>
+      <p className="text-sm text-charcoal leading-relaxed">&ldquo;{ask.question}&rdquo;</p>
 
-      {/* Reply avatars */}
       {repliers.length > 0 && (
         <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-black/6">
           <div className="flex -space-x-1.5">
             {repliers.map((u) => (
               // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={u.id}
-                src={u.avatar}
-                alt={u.name}
-                className="w-5 h-5 rounded-full border-2 border-cream object-cover"
-              />
+              <img key={u.id} src={u.avatar} alt={u.name} className="w-5 h-5 rounded-full border-2 border-cream object-cover" />
             ))}
           </div>
           <span className="text-[11px] text-muted">
@@ -100,13 +86,13 @@ function AskFeedCard({ ask }: { ask: Ask }) {
 }
 
 type FeedItem =
-  | { type: "rec"; data: Recommendation; timestamp: string }
-  | { type: "ask"; data: Ask; timestamp: string };
+  | { type: "rec"; data: Recommendation; timestamp: string; hasTrustedChain: boolean }
+  | { type: "ask"; data: Ask; timestamp: string; hasTrustedChain: false };
 
 export default function HomePage() {
   const router = useRouter();
   const { userRecs } = useUserRecs();
-  const { interactions, toggle } = useInteractions();
+  const { interactions, toggle, addVouch, removeVouch, addVouchChain, addDisagreement } = useInteractions();
   const [userAsks, setUserAsks] = useState<Ask[]>([]);
 
   useEffect(() => {
@@ -124,11 +110,21 @@ export default function HomePage() {
     const allRecs = [...userRecs, ...recommendations];
     const allAsks = [...userAsks, ...mockAsks];
     const items: FeedItem[] = [
-      ...allRecs.map((r) => ({ type: "rec" as const, data: r, timestamp: r.timestamp })),
-      ...allAsks.map((a) => ({ type: "ask" as const, data: a, timestamp: a.timestamp })),
+      ...allRecs.map((r) => {
+        const chains = interactions.vouchChains[r.id] ?? [];
+        const hasTrustedChain = chains.some((c) => c.length >= 3);
+        return { type: "rec" as const, data: r, timestamp: r.timestamp, hasTrustedChain };
+      }),
+      ...allAsks.map((a) => ({
+        type: "ask" as const, data: a, timestamp: a.timestamp, hasTrustedChain: false as const,
+      })),
     ];
-    return items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }, [userRecs, userAsks]);
+    // Trusted chains (3+ people) surface above non-chain items; within each group, sort by time
+    return items.sort((a, b) => {
+      if (a.hasTrustedChain !== b.hasTrustedChain) return a.hasTrustedChain ? -1 : 1;
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+    });
+  }, [userRecs, userAsks, interactions.vouchChains]);
 
   return (
     <div className="pt-4 pb-4">
@@ -138,11 +134,7 @@ export default function HomePage() {
         className="mx-4 mb-5 w-[calc(100%-2rem)] flex items-center gap-3 bg-white rounded-2xl shadow-sm shadow-black/5 px-4 py-3 text-left active:scale-[0.99] transition-transform"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={currentUser.avatar}
-          alt={currentUser.name}
-          className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-        />
+        <img src={currentUser.avatar} alt={currentUser.name} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
         <span className="flex-1 text-sm text-muted/70">What are you looking for?</span>
         <ChevronRight size={16} className="text-muted/40 flex-shrink-0" />
       </button>
@@ -155,6 +147,9 @@ export default function HomePage() {
 
         const rec = item.data;
         const recommender = users.find((u) => u.id === rec.recommenderId) ?? currentUser;
+        const chains = interactions.vouchChains[rec.id] ?? [];
+        const disagreements = interactions.disagreements[rec.id] ?? [];
+
         return (
           <RecommendationCard
             key={rec.id}
@@ -164,10 +159,17 @@ export default function HomePage() {
             isVouched={interactions.vouches.includes(rec.id)}
             isSaved={interactions.saves.includes(rec.id)}
             onToggleLike={() => toggle("likes", rec.id)}
-            onToggleVouch={() => toggle("vouches", rec.id)}
             onToggleSave={() => toggle("saves", rec.id)}
+            onVouch={(chain) => {
+              addVouch(rec.id);
+              if (chain) addVouchChain(rec.id, chain);
+            }}
+            onUnvouch={() => removeVouch(rec.id)}
+            onDisagree={(comment) => addDisagreement(rec.id, comment)}
             friends={friends}
             currentUserAvatar={currentUser.avatar}
+            vouchChains={chains}
+            disagreements={disagreements}
           />
         );
       })}
