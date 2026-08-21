@@ -21,6 +21,7 @@ export interface Recommendation {
   recommenderId: string;
   businessName: string;
   serviceProvider?: string;
+  providerId?: string;
   category: Category;
   subCategory: SubCategory;
   city: string;
@@ -193,6 +194,7 @@ export const recommendations: Recommendation[] = [
     id: "r2",
     recommenderId: "sarah",
     businessName: "Dr. Ami Park, DDS",
+    serviceProvider: "Dr. Ami Park", providerId: "p3",
     category: "Health", subCategory: "Dentist",
     city: "Manhattan, NY", lat: 40.7614, lng: -73.9776,
     blurb: "The only dentist I've ever actually looked forward to seeing. Zero judgment, zero pain, and she explains every single thing before doing it. Takes most insurance.",
@@ -204,6 +206,7 @@ export const recommendations: Recommendation[] = [
     id: "r3",
     recommenderId: "katie",
     businessName: "Mani by Jen",
+    serviceProvider: "Jen Kim", providerId: "p2",
     category: "Beauty", subCategory: "Nails",
     city: "Williamsburg, NY", lat: 40.7081, lng: -73.9571,
     blurb: "Gel sets that genuinely last 3 weeks without a single chip. Tiny studio, always smells like jasmine tea. She's meticulous — she'll redo a nail before you even notice something's off.",
@@ -228,6 +231,7 @@ export const recommendations: Recommendation[] = [
     id: "r5",
     recommenderId: "zoe",
     businessName: "Flow & Glow Yoga",
+    serviceProvider: "Elena Vasquez", providerId: "p1",
     category: "Fitness", subCategory: "Yoga",
     city: "Park Slope, NY", lat: 40.6726, lng: -73.9769,
     blurb: "Sunday morning classes with Elena will reset your entire week. The studio is small and she actually knows your name. I've tried 10 studios and this one is the only one I've stayed with.",
@@ -296,6 +300,7 @@ export const recommendations: Recommendation[] = [
     id: "r11",
     recommenderId: "jasmine",
     businessName: "Fix It Right Handyman — Marco",
+    serviceProvider: "Marco Santos", providerId: "p4",
     category: "Home", subCategory: "Handyman",
     city: "Bushwick, NY", lat: 40.6944, lng: -73.9213,
     blurb: "Mounted my TV, fixed a leaky faucet, and assembled IKEA furniture all in one afternoon. Reasonable rates, no mansplaining, actually cleaned up after himself.",
@@ -330,6 +335,7 @@ export const recommendations: Recommendation[] = [
     id: "r14",
     recommenderId: "aisha",
     businessName: "Golden Hour Nails",
+    serviceProvider: "Jen Kim", providerId: "p2",
     category: "Beauty", subCategory: "Nails",
     city: "Crown Heights, NY", lat: 40.6736, lng: -73.9466,
     blurb: "Nail art that's actually worth posting. They do gel, dip, and bio-gel. Prices are genuinely fair and they never rush you — you're there as long as you need.",
@@ -386,6 +392,7 @@ export const recommendations: Recommendation[] = [
     id: "r19",
     recommenderId: "priya",
     businessName: "Studio Sol — Hot Pilates",
+    serviceProvider: "Elena Vasquez", providerId: "p1",
     category: "Fitness", subCategory: "Gym",
     city: "West Village, NY", lat: 40.7336, lng: -74.003,
     blurb: "Changed my core strength in 4 weeks. The hot room sounds scary but you get used to it fast. They have a killer intro offer — 2 weeks unlimited for $40.",
@@ -518,4 +525,89 @@ export const recommendations: Recommendation[] = [
     likesCount: 68, vouches: ["mia", "chloe", "hannah", "nadia", "priya"], commentCount: 20,
     reservations: true, openNow: false,
   },
+  {
+    id: "r31",
+    recommenderId: "olivia",
+    businessName: "Lune Bakery",
+    category: "Food", subCategory: "Restaurant",
+    city: "Carroll Gardens, NY", lat: 40.6802, lng: -73.9997,
+    blurb: "The croissants here are genuinely life-altering. French technique, sourced local. They sell out by 9am on weekends — go early or pre-order. Worth every minute of the wait.",
+    photo: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=800&q=80",
+    timestamp: "2026-08-03T11:00:00Z",
+    likesCount: 44, vouches: ["aisha"], commentCount: 8,
+    openNow: true,
+  },
+  {
+    id: "r32",
+    recommenderId: "sofia",
+    businessName: "Meridian Acupuncture",
+    category: "Health", subCategory: "Doctor",
+    city: "Gowanus, NY", lat: 40.674, lng: -73.9895,
+    blurb: "Fixed my chronic shoulder tension after years of PT going nowhere. The practitioner takes 20 minutes just learning your history before touching a needle. Nothing woo — purely effective.",
+    timestamp: "2026-08-02T14:00:00Z",
+    likesCount: 29, vouches: [], commentCount: 5,
+    reservations: true, openNow: false,
+  },
 ];
+
+// ─── Provider profiles ────────────────────────────────────────────────────────
+
+export interface Provider {
+  id: string;
+  name: string;
+  profession: string;
+  avatar: string;
+  businesses: string[];
+  verified: boolean;
+  bio: string;
+}
+
+export const providers: Provider[] = [
+  {
+    id: "p1",
+    name: "Elena Vasquez",
+    profession: "Yoga & Pilates Instructor",
+    avatar: "https://i.pravatar.cc/150?u=elena-vasquez",
+    businesses: ["Flow & Glow Yoga", "Studio Sol — Hot Pilates"],
+    verified: true,
+    bio: "200-hr YTT certified. Teaching hot yoga and pilates in NYC for 7 years. Specializes in alignment-based vinyasa and heated pilates — beginners welcome and encouraged.",
+  },
+  {
+    id: "p2",
+    name: "Jen Kim",
+    profession: "Nail Technician",
+    avatar: "https://i.pravatar.cc/150?u=jen-kim-nails",
+    businesses: ["Mani by Jen", "Golden Hour Nails"],
+    verified: true,
+    bio: "10 years in nail art. Specializes in gel sets, bio-gel, and intricate nail art. Every set is custom-mapped to your nail shape, lifestyle, and vibe.",
+  },
+  {
+    id: "p3",
+    name: "Dr. Ami Park",
+    profession: "Dentist, DDS",
+    avatar: "https://i.pravatar.cc/150?u=dr-ami-park",
+    businesses: ["Dr. Ami Park, DDS", "Midtown Dental Collective"],
+    verified: true,
+    bio: "Columbia Dental grad. Practicing for 12 years with a focus on anxiety-free dentistry. Always explains everything she's about to do — before she does it.",
+  },
+  {
+    id: "p4",
+    name: "Marco Santos",
+    profession: "Handyman & Home Services",
+    avatar: "https://i.pravatar.cc/150?u=marco-santos-hw",
+    businesses: ["Fix It Right Handyman", "HomePro NYC"],
+    verified: true,
+    bio: "Licensed general contractor in NY & NJ. TV mounting, IKEA assembly, plumbing, electrical. 500+ clients across Brooklyn and Queens — always cleans up after.",
+  },
+];
+
+// ─── Smart Score helper ───────────────────────────────────────────────────────
+// Deterministic scores derived from rec ID — stable across renders, no DB needed.
+
+export function getExternalScores(recId: string): { yelp: number; google: number; smart: number } {
+  const h = [...recId].reduce((a, c) => (a * 31 + c.charCodeAt(0)) & 0xffff, 0);
+  const yelp   = Math.round((3.8 + ((h         & 0x3ff) / 0x3ff) * 1.1) * 10) / 10;
+  const google = Math.round((4.1 + (((h >> 4)  & 0x3ff) / 0x3ff) * 0.8) * 10) / 10;
+  const smart  = Math.round((7.4 + (((h >> 2)  & 0x3ff) / 0x3ff) * 2.3) * 10) / 10;
+  return { yelp: Math.min(yelp, 4.9), google: Math.min(google, 5.0), smart: Math.min(smart, 9.7) };
+}

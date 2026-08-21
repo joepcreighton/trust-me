@@ -1,8 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Heart, Handshake, MessageCircle, Bookmark, MapPin, ThumbsDown } from "lucide-react";
-import { Recommendation, User, Category, users as allUsers, currentUser } from "@/lib/mock-data";
+import { useRouter } from "next/navigation";
+import { Heart, Handshake, MessageCircle, Bookmark, MapPin, ThumbsDown, Info } from "lucide-react";
+import {
+  Recommendation, User, Category,
+  users as allUsers, currentUser,
+  getExternalScores,
+} from "@/lib/mock-data";
 import type { Disagreement } from "@/lib/use-interactions";
 import { cn } from "@/lib/utils";
 import { VouchAvatars } from "./vouch-avatars";
@@ -35,6 +40,16 @@ const categoryStyle: Record<Category, { bg: string; text: string }> = {
   Pets:    { bg: "bg-lime-100",   text: "text-lime-700" },
 };
 
+// Module-level network sets (static mock data — computed once)
+const directFriendIds = new Set(currentUser.friends);
+const fofIds = new Set<string>();
+for (const friendId of currentUser.friends) {
+  const friend = allUsers.find((u) => u.id === friendId);
+  friend?.friends.forEach((id) => {
+    if (!directFriendIds.has(id) && id !== currentUser.id) fofIds.add(id);
+  });
+}
+
 function timeAgo(timestamp: string): string {
   const diff = Date.now() - new Date(timestamp).getTime();
   const hours = Math.floor(diff / 3_600_000);
@@ -45,7 +60,7 @@ function timeAgo(timestamp: string): string {
   return `${Math.floor(days / 7)}w`;
 }
 
-// ─── Chain display ────────────────────────────────────────────────────────────
+// ─── Chain display ─────────────────────────────────────────────────────────────
 
 function ChainDisplay({ chains }: { chains: string[][] }) {
   const chain = chains[0];
@@ -65,7 +80,6 @@ function ChainDisplay({ chains }: { chains: string[][] }) {
 
   return (
     <div className="flex items-center gap-2 mt-3 pt-3 border-t border-black/5 flex-wrap">
-      {/* Avatar chain */}
       <div className="flex items-center gap-1">
         {visible.map((u, i) => (
           <span key={u.id} className="flex items-center gap-1">
@@ -94,6 +108,53 @@ function ChainDisplay({ chains }: { chains: string[][] }) {
   );
 }
 
+// ─── Smart Score fallback ──────────────────────────────────────────────────────
+
+function SmartScoreFallback({ recId }: { recId: string }) {
+  const [showInfo, setShowInfo] = useState(false);
+  const { yelp, google, smart } = getExternalScores(recId);
+
+  return (
+    <div className="mt-3 pt-3 border-t border-black/5">
+      <p className="text-[10px] font-bold text-muted/60 uppercase tracking-wide mb-2.5">
+        Not rated by your network yet
+      </p>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2.5">
+          <span className="w-2 h-2 rounded-full bg-rose-500 flex-shrink-0" />
+          <span className="text-xs text-muted w-14 flex-shrink-0">Yelp</span>
+          <span className="text-xs font-semibold text-charcoal">{yelp} ★</span>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
+          <span className="text-xs text-muted w-14 flex-shrink-0">Google</span>
+          <span className="text-xs font-semibold text-charcoal">{google} ★</span>
+        </div>
+        <div className="flex items-center gap-2.5">
+          <span className="w-2 h-2 rounded-full bg-sage flex-shrink-0" />
+          <span className="text-xs text-muted w-14 flex-shrink-0">Trust Me</span>
+          <span className="text-sm font-bold text-sage leading-none">{smart}</span>
+          <span className="text-[10px] font-bold text-sage-dark bg-sage-light px-2 py-0.5 rounded-full border border-sage/20 flex-shrink-0">
+            Smart Score
+          </span>
+          <button
+            onClick={() => setShowInfo((v) => !v)}
+            className="text-muted/40 hover:text-muted transition-colors"
+            aria-label="What is Smart Score?"
+          >
+            <Info size={12} />
+          </button>
+        </div>
+        {showInfo && (
+          <p className="text-[11px] text-muted/70 leading-relaxed pl-6">
+            We calculate this from vouches by people whose taste matches yours — even when they&apos;re not in your network yet.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main card ────────────────────────────────────────────────────────────────
 
 export function RecommendationCard({
@@ -112,6 +173,7 @@ export function RecommendationCard({
   vouchChains = [],
   disagreements = [],
 }: RecommendationCardProps) {
+  const router = useRouter();
   const [vouchSheetOpen, setVouchSheetOpen] = useState(false);
   const [disagreeSheetOpen, setDisagreeSheetOpen] = useState(false);
 
@@ -119,11 +181,15 @@ export function RecommendationCard({
   const displayVouches = rec.vouches.length + (isVouched ? 1 : 0);
   const style = categoryStyle[rec.category];
 
+  // Friends who vouched (for avatar display)
   const voucherFriends = rec.vouches
+    .filter((id) => directFriendIds.has(id))
     .map((id) => friends.find((f) => f.id === id))
     .filter((f): f is User => f !== undefined);
 
   const hasChains = vouchChains.length > 0;
+  const hasNetworkVouches = rec.vouches.some((v) => directFriendIds.has(v) || fofIds.has(v));
+  const showSmartScore = !hasNetworkVouches && !isVouched && !hasChains;
   const showVouchStrip = hasChains || voucherFriends.length > 0 || isVouched;
 
   function handleVouchClick() {
@@ -170,7 +236,17 @@ export function RecommendationCard({
             </h3>
             {rec.serviceProvider && (
               <p className="text-xs text-muted font-medium mt-0.5">
-                {rec.serviceProvider} at {rec.businessName}
+                {rec.providerId ? (
+                  <button
+                    onClick={() => router.push(`/provider/${rec.providerId}`)}
+                    className="hover:text-sage transition-colors underline underline-offset-2 decoration-muted/30"
+                  >
+                    {rec.serviceProvider}
+                  </button>
+                ) : (
+                  rec.serviceProvider
+                )}
+                {" at "}{rec.businessName}
               </p>
             )}
             <div className="flex items-center gap-1 mt-1 text-muted">
@@ -257,8 +333,10 @@ export function RecommendationCard({
             ❤️ show support &nbsp;·&nbsp; 🤝 &ldquo;I&apos;ve used them &amp; second this&rdquo;
           </p>
 
-          {/* Vouch strip: chain display takes priority over plain avatars */}
-          {showVouchStrip && (
+          {/* Trust signal: vouch strip OR smart score fallback */}
+          {showSmartScore ? (
+            <SmartScoreFallback recId={rec.id} />
+          ) : showVouchStrip ? (
             hasChains ? (
               <ChainDisplay chains={vouchChains} />
             ) : (
@@ -268,7 +346,7 @@ export function RecommendationCard({
                 currentUserAvatar={currentUserAvatar}
               />
             )
-          )}
+          ) : null}
 
           {/* Disagreements */}
           {disagreements.length > 0 && (
