@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Bookmark, ChevronRight } from "lucide-react";
+import { Bookmark, ChevronRight, Sparkles, HeartPulse, Home, Dumbbell, PawPrint, Circle } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { recommendations, users, currentUser, Category, Recommendation } from "@/lib/mock-data";
 import { useUserRecs } from "@/lib/user-recs-context";
 import { useInteractions } from "@/lib/use-interactions";
@@ -12,13 +13,13 @@ import { cn } from "@/lib/utils";
 
 const CATEGORY_ORDER: Category[] = ["Beauty", "Health", "Home", "Fitness", "Pets", "Other"];
 
-const CATEGORY_META: Record<Category, { emoji: string; bg: string; text: string }> = {
-  Beauty:  { emoji: "💅", bg: "bg-pink-50",   text: "text-pink-600" },
-  Health:  { emoji: "🌿", bg: "bg-teal-50",   text: "text-teal-600" },
-  Home:    { emoji: "🏡", bg: "bg-blue-50",   text: "text-blue-600" },
-  Fitness: { emoji: "💪", bg: "bg-purple-50", text: "text-purple-600" },
-  Pets:    { emoji: "🐾", bg: "bg-lime-50",   text: "text-lime-600" },
-  Other:   { emoji: "✦",  bg: "bg-gray-50",   text: "text-gray-500" },
+const CATEGORY_META: Record<Category, { icon: LucideIcon; bg: string; text: string }> = {
+  Beauty:  { icon: Sparkles,   bg: "bg-pink-50",   text: "text-pink-600" },
+  Health:  { icon: HeartPulse, bg: "bg-teal-50",   text: "text-teal-600" },
+  Home:    { icon: Home,       bg: "bg-blue-50",   text: "text-blue-600" },
+  Fitness: { icon: Dumbbell,   bg: "bg-purple-50", text: "text-purple-600" },
+  Pets:    { icon: PawPrint,   bg: "bg-lime-50",   text: "text-lime-600" },
+  Other:   { icon: Circle,     bg: "bg-gray-50",   text: "text-gray-500" },
 };
 
 // ─── compact list item ───────────────────────────────────────────────────────
@@ -33,6 +34,7 @@ function SavedItem({
   onClick: () => void;
 }) {
   const meta = CATEGORY_META[rec.category];
+  const PlaceholderIcon = meta.icon;
 
   return (
     <button
@@ -51,7 +53,7 @@ function SavedItem({
           />
         ) : (
           <div className={cn("w-full h-full flex items-center justify-center", meta.bg)}>
-            <span className="text-xl">{meta.emoji}</span>
+            <PlaceholderIcon size={20} strokeWidth={1.5} className={meta.text} />
           </div>
         )}
       </div>
@@ -141,11 +143,13 @@ export default function SavedPage() {
         </div>
 
         {/* Category groups */}
-        {grouped.map(({ category, meta, recs }) => (
+        {grouped.map(({ category, meta, recs }) => {
+          const CategoryIcon = meta.icon;
+          return (
           <div key={category} className="mb-6">
             {/* Category header */}
             <div className="flex items-center gap-2 px-4 mb-2">
-              <span className="text-base leading-none">{meta.emoji}</span>
+              <CategoryIcon size={16} strokeWidth={1.75} className={meta.text} />
               <h3 className="text-[13px] font-bold text-charcoal tracking-wide uppercase">
                 {category}
               </h3>
@@ -176,7 +180,8 @@ export default function SavedPage() {
               })}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Full-card detail sheet */}

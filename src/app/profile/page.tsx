@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronRight, Sparkles, MessageSquare, Settings, Lock } from "lucide-react";
+import { ChevronDown, Sparkles, MessageSquare, Settings, Lock, HeartPulse, Home, Dumbbell, PawPrint, Circle, Handshake, Bookmark, MapPin, Check } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import {
   recommendations,
   users,
@@ -23,13 +24,13 @@ const ASKS_KEY = "trust-me-asks";
 
 const CATEGORY_ORDER: Category[] = ["Beauty", "Health", "Home", "Fitness", "Pets", "Other"];
 
-const CATEGORY_META: Record<Category, { emoji: string; bg: string; text: string; border: string }> = {
-  Beauty:  { emoji: "💅", bg: "bg-pink-50",   text: "text-pink-700",   border: "border-pink-100" },
-  Health:  { emoji: "🌿", bg: "bg-teal-50",   text: "text-teal-700",   border: "border-teal-100" },
-  Home:    { emoji: "🏡", bg: "bg-blue-50",   text: "text-blue-700",   border: "border-blue-100" },
-  Fitness: { emoji: "💪", bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-100" },
-  Pets:    { emoji: "🐾", bg: "bg-lime-50",   text: "text-lime-700",   border: "border-lime-100" },
-  Other:   { emoji: "✦",  bg: "bg-gray-50",   text: "text-gray-600",   border: "border-gray-100" },
+const CATEGORY_META: Record<Category, { icon: LucideIcon; bg: string; text: string; border: string }> = {
+  Beauty:  { icon: Sparkles,   bg: "bg-pink-50",   text: "text-pink-700",   border: "border-pink-100" },
+  Health:  { icon: HeartPulse, bg: "bg-teal-50",   text: "text-teal-700",   border: "border-teal-100" },
+  Home:    { icon: Home,       bg: "bg-blue-50",   text: "text-blue-700",   border: "border-blue-100" },
+  Fitness: { icon: Dumbbell,   bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-100" },
+  Pets:    { icon: PawPrint,   bg: "bg-lime-50",   text: "text-lime-700",   border: "border-lime-100" },
+  Other:   { icon: Circle,     bg: "bg-gray-50",   text: "text-gray-600",   border: "border-gray-100" },
 };
 
 function timeAgo(ts: string) {
@@ -50,7 +51,7 @@ function SummaryCard({
   label,
   onClick,
 }: {
-  icon: string;
+  icon: React.ReactElement;
   count: number;
   label: string;
   onClick?: () => void;
@@ -60,7 +61,7 @@ function SummaryCard({
       onClick={onClick}
       className="flex-1 flex flex-col items-center gap-1.5 bg-white rounded-2xl shadow-sm shadow-black/5 py-4 px-2 active:scale-[0.97] transition-transform"
     >
-      <span className="text-lg leading-none">{icon}</span>
+      <div className="text-sage">{icon}</div>
       <span className="font-display text-2xl text-charcoal leading-tight">{count}</span>
       <span className="text-[11px] text-muted text-center leading-tight">{label}</span>
     </button>
@@ -71,6 +72,7 @@ function SummaryCard({
 
 function ProfileRecItem({ rec }: { rec: Recommendation }) {
   const meta = CATEGORY_META[rec.category];
+  const Icon = meta.icon;
   return (
     <div className="flex items-center gap-3 px-4 py-3">
       <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0">
@@ -78,8 +80,8 @@ function ProfileRecItem({ rec }: { rec: Recommendation }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={rec.photo} alt="" className="w-full h-full object-cover" loading="lazy" />
         ) : (
-          <div className={cn("w-full h-full flex items-center justify-center text-lg", meta.bg)}>
-            {meta.emoji}
+          <div className={cn("w-full h-full flex items-center justify-center", meta.bg)}>
+            <Icon size={18} strokeWidth={1.5} className={cn(meta.text, "opacity-70")} />
           </div>
         )}
       </div>
@@ -100,6 +102,7 @@ function CategoryAccordion({
 }) {
   const [open, setOpen] = useState(false);
   const meta = CATEGORY_META[category];
+  const Icon = meta.icon;
 
   return (
     <div className="mx-4 mb-3 rounded-2xl overflow-hidden bg-white shadow-sm shadow-black/5">
@@ -107,7 +110,7 @@ function CategoryAccordion({
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-black/4 transition-colors"
       >
-        <span className="text-base leading-none">{meta.emoji}</span>
+        <Icon size={16} strokeWidth={1.75} className={meta.text} />
         <span className="font-semibold text-charcoal text-sm flex-1">{category}</span>
         <span className={cn("text-[11px] font-bold px-2 py-0.5 rounded-full", meta.bg, meta.text)}>
           {recs.length}
@@ -257,7 +260,10 @@ export default function ProfilePage() {
         <p className="text-sm text-muted mt-0.5">@{currentUser.username}</p>
 
         {cityLine && settings.showCity && (
-          <p className="text-sm text-muted mt-1.5">📍 {cityLine}</p>
+          <p className="flex items-center justify-center gap-1.5 text-sm text-muted mt-1.5">
+            <MapPin size={13} strokeWidth={1.75} className="text-muted/70" />
+            {cityLine}
+          </p>
         )}
 
         <p className="text-sm text-charcoal/75 italic mt-3 max-w-[260px] mx-auto leading-relaxed">
@@ -339,10 +345,10 @@ export default function ProfilePage() {
         <div className="pt-5 pb-4">
           {/* Summary cards */}
           <div className="flex gap-3 px-4 mb-5">
-            <SummaryCard icon="✓" count={recommendedCount} label="Recommended" />
-            <SummaryCard icon="🤝" count={vouchedCount} label="Vouched" />
+            <SummaryCard icon={<Check size={20} strokeWidth={2.5} />} count={recommendedCount} label="Recommended" />
+            <SummaryCard icon={<Handshake size={20} strokeWidth={1.75} />} count={vouchedCount} label="Vouched" />
             <SummaryCard
-              icon="🔖"
+              icon={<Bookmark size={20} strokeWidth={1.75} />}
               count={wantToTryCount}
               label="Want to Try"
               onClick={() => router.push("/saved")}

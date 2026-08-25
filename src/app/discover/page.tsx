@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search, ChevronRight, Users, TrendingUp, X, MapPin, ChevronDown } from "lucide-react";
+import { Search, ChevronRight, Users, TrendingUp, X, MapPin, ChevronDown, Heart, Handshake, Star } from "lucide-react";
 import {
   recommendations,
   users,
@@ -117,8 +117,14 @@ function RecsForYouCard({
         </div>
 
         <div className="flex items-center gap-2.5 mt-2">
-          <span className="text-[10px] text-muted/60">🤝 {rec.vouches.length}</span>
-          <span className="text-[10px] text-muted/60">❤️ {rec.likesCount}</span>
+          <span className="flex items-center gap-0.5 text-[10px] text-muted/60">
+            <Handshake size={10} strokeWidth={1.5} />
+            {rec.vouches.length}
+          </span>
+          <span className="flex items-center gap-0.5 text-[10px] text-muted/60">
+            <Heart size={10} strokeWidth={1.5} />
+            {rec.likesCount}
+          </span>
         </div>
       </div>
     </button>
@@ -196,8 +202,12 @@ function DiscoverCard({
           <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full", style.bg, style.text)}>
             {rec.category}
           </span>
-          <span className="text-[11px] text-muted">
-            ❤️ {rec.likesCount} &nbsp;·&nbsp; 🤝 {rec.vouches.length}
+          <span className="flex items-center gap-2 text-[11px] text-muted">
+            <Heart size={11} strokeWidth={1.5} />
+            {rec.likesCount}
+            <span className="text-muted/30">·</span>
+            <Handshake size={11} strokeWidth={1.5} />
+            {rec.vouches.length}
           </span>
         </div>
       </div>
@@ -285,7 +295,10 @@ function ExternalResultCard({ result }: { result: ExternalResult }) {
           <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full", style.bg, style.text)}>
             {result.category}
           </span>
-          <span className="text-[11px] text-amber-500 font-medium">{result.rating} ★</span>
+          <span className="flex items-center gap-0.5 text-[11px] text-amber-500 font-medium">
+            <Star size={10} className="fill-amber-500" strokeWidth={0} />
+            {result.rating}
+          </span>
           <span className="text-[11px] text-muted">({result.reviewCount})</span>
           <span className="text-[11px] font-bold text-sage">{result.tasteMatch}% match</span>
         </div>

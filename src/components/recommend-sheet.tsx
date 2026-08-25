@@ -8,7 +8,16 @@ import {
   Camera,
   ChevronDown,
   ArrowRight,
+  Sparkles,
+  HeartPulse,
+  Home,
+  Dumbbell,
+  PawPrint,
+  Circle,
+  Globe,
+  Phone,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { recommendations, currentUser, Category, Recommendation } from "@/lib/mock-data";
 
@@ -24,17 +33,19 @@ interface FormState {
   why: string;
   photo: string | null;
   city: string;
+  website: string;
+  phone: string;
 }
 
 // ─── constants ───────────────────────────────────────────────────────────────
 
-const CATEGORIES: Array<{ value: FormCategory; emoji: string }> = [
-  { value: "Beauty", emoji: "💅" },
-  { value: "Health", emoji: "🌿" },
-  { value: "Home", emoji: "🏡" },
-  { value: "Fitness", emoji: "💪" },
-  { value: "Pets", emoji: "🐾" },
-  { value: "Other", emoji: "✦" },
+const CATEGORIES: Array<{ value: FormCategory; icon: LucideIcon }> = [
+  { value: "Beauty",  icon: Sparkles },
+  { value: "Health",  icon: HeartPulse },
+  { value: "Home",    icon: Home },
+  { value: "Fitness", icon: Dumbbell },
+  { value: "Pets",    icon: PawPrint },
+  { value: "Other",   icon: Circle },
 ];
 
 const CITIES = [
@@ -115,6 +126,8 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
     why: "",
     photo: null,
     city: "",
+    website: "",
+    phone: "",
   });
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -123,7 +136,7 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
   useEffect(() => {
     if (isOpen) {
       setStep(1);
-      setForm({ name: "", provider: "", category: null, why: "", photo: null, city: "" });
+      setForm({ name: "", provider: "", category: null, why: "", photo: null, city: "", website: "", phone: "" });
       setSuggestions([]);
       setTimeout(() => inputRef.current?.focus(), 350);
     }
@@ -186,8 +199,10 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
       subCategory: "Hair", // sensible default; full subcat picker is future scope
       city: form.city || "Location TBD",
       serviceProvider: form.provider.trim() || undefined,
-      blurb: form.why.trim() ? `Trust me... ${form.why.trim()}` : "",
+      blurb: form.why.trim(),
       photo: form.photo ?? undefined,
+      website: form.website.trim() || undefined,
+      phone: form.phone.trim() || undefined,
       timestamp: new Date().toISOString(),
       likesCount: 0,
       vouches: [],
@@ -296,9 +311,13 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
             <StepExtras
               photo={form.photo}
               city={form.city}
+              website={form.website}
+              phone={form.phone}
               onAddPhoto={addPhoto}
               onRemovePhoto={removePhoto}
               onCityChange={(city) => setForm((f) => ({ ...f, city }))}
+              onWebsiteChange={(website) => setForm((f) => ({ ...f, website }))}
+              onPhoneChange={(phone) => setForm((f) => ({ ...f, phone }))}
             />
           )}
         </div>
@@ -321,7 +340,7 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
                 Next <ArrowRight size={16} />
               </>
             ) : (
-              "Post! 🎉"
+              "Post →"
             )}
           </button>
         </div>
@@ -435,7 +454,7 @@ function StepCategory({
       </p>
 
       <div className="grid grid-cols-2 gap-3">
-        {CATEGORIES.map(({ value, emoji }) => (
+        {CATEGORIES.map(({ value, icon: Icon }) => (
           <button
             key={value}
             onClick={() => onSelect(value)}
@@ -446,7 +465,7 @@ function StepCategory({
                 : "border-black/10 bg-white text-charcoal hover:border-sage/40 hover:bg-sage-light/40"
             )}
           >
-            <span className="text-xl leading-none">{emoji}</span>
+            <Icon size={18} strokeWidth={1.75} />
             <span>{value}</span>
           </button>
         ))}
@@ -511,15 +530,23 @@ function StepWhy({
 function StepExtras({
   photo,
   city,
+  website,
+  phone,
   onAddPhoto,
   onRemovePhoto,
   onCityChange,
+  onWebsiteChange,
+  onPhoneChange,
 }: {
   photo: string | null;
   city: string;
+  website: string;
+  phone: string;
   onAddPhoto: () => void;
   onRemovePhoto: () => void;
   onCityChange: (v: string) => void;
+  onWebsiteChange: (v: string) => void;
+  onPhoneChange: (v: string) => void;
 }) {
   return (
     <div className="pt-1">
@@ -527,7 +554,7 @@ function StepExtras({
         A few last details
       </h2>
       <p className="text-sm text-muted mt-1 mb-6">
-        Both optional — skip if you'd like
+        All optional — skip anything you'd like
       </p>
 
       {/* Photo */}
@@ -563,7 +590,7 @@ function StepExtras({
       </div>
 
       {/* City */}
-      <div>
+      <div className="mb-6">
         <p className="text-xs font-semibold text-charcoal uppercase tracking-wide mb-3">
           Location
         </p>
@@ -584,6 +611,39 @@ function StepExtras({
           <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted">
             <ChevronDown size={16} />
           </div>
+        </div>
+      </div>
+
+      {/* Contact */}
+      <div className="space-y-4">
+        <p className="text-xs font-semibold text-charcoal uppercase tracking-wide">
+          Contact info
+        </p>
+
+        <div className="relative">
+          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted">
+            <Globe size={15} strokeWidth={1.75} />
+          </div>
+          <input
+            type="url"
+            value={website}
+            onChange={(e) => onWebsiteChange(e.target.value)}
+            placeholder="Website URL"
+            className="w-full pl-10 pr-4 py-3.5 rounded-2xl border border-black/10 bg-white text-charcoal text-sm placeholder:text-muted/60 focus:outline-none focus:border-sage focus:ring-2 focus:ring-sage/20 transition-all"
+          />
+        </div>
+
+        <div className="relative">
+          <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted">
+            <Phone size={15} strokeWidth={1.75} />
+          </div>
+          <input
+            type="tel"
+            value={phone}
+            onChange={(e) => onPhoneChange(e.target.value)}
+            placeholder="Phone number"
+            className="w-full pl-10 pr-4 py-3.5 rounded-2xl border border-black/10 bg-white text-charcoal text-sm placeholder:text-muted/60 focus:outline-none focus:border-sage focus:ring-2 focus:ring-sage/20 transition-all"
+          />
         </div>
       </div>
     </div>

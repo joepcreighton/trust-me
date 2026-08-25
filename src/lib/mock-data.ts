@@ -37,6 +37,8 @@ export interface Recommendation {
   reservations?: boolean;
   delivery?: boolean;
   openNow?: boolean;
+  website?: string;
+  phone?: string;
 }
 
 // Ava's mock location for map center and "Recs Nearby" filter
@@ -201,6 +203,7 @@ export const recommendations: Recommendation[] = [
     timestamp: "2026-08-17T09:30:00Z",
     likesCount: 31, vouches: ["sarah", "katie", "zoe", "emma", "lily"], commentCount: 8,
     reservations: true, openNow: true,
+    phone: "(718) 555-0283",
   },
   {
     id: "r2",
@@ -213,6 +216,7 @@ export const recommendations: Recommendation[] = [
     timestamp: "2026-08-17T07:15:00Z",
     likesCount: 44, vouches: ["katie", "priya", "maya"], commentCount: 12,
     reservations: true, openNow: false,
+    website: "https://dramparkdds.com", phone: "(212) 555-0192",
   },
   {
     id: "r3",
@@ -251,6 +255,7 @@ export const recommendations: Recommendation[] = [
     timestamp: "2026-08-16T10:30:00Z",
     likesCount: 38, vouches: ["lily", "hannah", "chloe", "mia"], commentCount: 9,
     reservations: false, openNow: true,
+    website: "https://flowandglowyoga.studio", phone: "(718) 555-0419",
   },
   {
     id: "r6",
@@ -273,6 +278,7 @@ export const recommendations: Recommendation[] = [
     timestamp: "2026-08-15T12:00:00Z",
     likesCount: 61, vouches: ["maya", "sarah", "chloe"], commentCount: 17,
     reservations: true, openNow: false,
+    website: "https://dryemiosei.com", phone: "(212) 555-0147",
   },
   {
     id: "r8",
@@ -330,6 +336,7 @@ export const recommendations: Recommendation[] = [
     timestamp: "2026-08-12T20:00:00Z",
     likesCount: 74, vouches: ["sarah", "chloe", "hannah", "sofia"], commentCount: 22,
     reservations: true, openNow: false,
+    website: "https://rootstherapynyc.com",
   },
   {
     id: "r14",

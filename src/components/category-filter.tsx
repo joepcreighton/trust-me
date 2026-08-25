@@ -13,16 +13,6 @@ const categories: Array<Category | "All"> = [
   "Other",
 ];
 
-const categoryEmoji: Record<string, string> = {
-  All: "✨",
-  Beauty: "💅",
-  Health: "🌿",
-  Home: "🏡",
-  Fitness: "💪",
-  Pets: "🐾",
-  Other: "✦",
-};
-
 interface CategoryFilterProps {
   active: Category | "All";
   onChange: (cat: Category | "All") => void;
@@ -36,14 +26,13 @@ export function CategoryFilter({ active, onChange }: CategoryFilterProps) {
           key={cat}
           onClick={() => onChange(cat)}
           className={cn(
-            "flex-shrink-0 flex items-center gap-1.5 text-sm font-medium px-3.5 py-1.5 rounded-full border transition-all",
+            "flex-shrink-0 text-sm font-medium px-3.5 py-1.5 rounded-full border transition-all",
             active === cat
               ? "bg-sage text-white border-sage shadow-sm"
               : "bg-white text-muted border-black/10 hover:border-sage/50 hover:text-charcoal"
           )}
         >
-          <span className="text-[13px]">{categoryEmoji[cat]}</span>
-          <span>{cat}</span>
+          {cat}
         </button>
       ))}
     </div>

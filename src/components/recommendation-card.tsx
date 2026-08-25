@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Heart, Handshake, MessageCircle, Bookmark, MapPin, ThumbsDown } from "lucide-react";
+import { Heart, Handshake, MessageCircle, Bookmark, MapPin, ThumbsDown, Link2, Globe, Phone } from "lucide-react";
 import {
   Recommendation, User, Category,
   users as allUsers, currentUser,
@@ -92,8 +92,9 @@ function ChainDisplay({ chains }: { chains: string[][] }) {
       </p>
 
       {hasTrustedChain && (
-        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sage-light text-sage-dark border border-sage/20 flex-shrink-0">
-          🔗 Trusted chain
+        <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-sage-light text-sage-dark border border-sage/20 flex-shrink-0">
+          <Link2 size={10} strokeWidth={2} />
+          Trusted chain
         </span>
       )}
     </div>
@@ -199,7 +200,37 @@ export function RecommendationCard({
 
         {/* Blurb + actions */}
         <div className="p-4 pt-3">
-          <p className="text-sm text-charcoal leading-relaxed">&ldquo;{rec.blurb}&rdquo;</p>
+          <p className="font-display text-sm italic text-sage leading-snug">Trust me...</p>
+          <div className="h-px bg-sage/20 my-2" />
+          <p className="text-sm text-charcoal leading-relaxed">{rec.blurb}</p>
+
+          {/* Contact info */}
+          {(rec.website || rec.phone) && (
+            <div className="flex items-center gap-4 mt-3">
+              {rec.website && (
+                <a
+                  href={rec.website}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-xs text-muted hover:text-sage transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Globe size={13} strokeWidth={1.75} />
+                  <span>Website</span>
+                </a>
+              )}
+              {rec.phone && (
+                <a
+                  href={`tel:${rec.phone}`}
+                  className="flex items-center gap-1.5 text-xs text-muted hover:text-sage transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Phone size={13} strokeWidth={1.75} />
+                  <span>Call</span>
+                </a>
+              )}
+            </div>
+          )}
 
           {/* Action row */}
           <div className="flex items-center mt-4 gap-1">

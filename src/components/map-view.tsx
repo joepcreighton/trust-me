@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { Heart, Handshake } from "lucide-react";
 import { Recommendation, avaLocation, Category } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -110,8 +111,12 @@ export default function MapView({ recs, vouchChainCounts, onRecClick, onSwitchTo
                     {rec.blurb}
                   </p>
                   <div className="flex items-center justify-between mt-2.5">
-                    <span className="text-[10px] text-gray-400">
-                      ❤️ {rec.likesCount} &nbsp;·&nbsp; 🤝 {rec.vouches.length}
+                    <span className="flex items-center gap-2 text-[10px] text-gray-400">
+                      <Heart size={10} strokeWidth={1.5} />
+                      {rec.likesCount}
+                      <span>·</span>
+                      <Handshake size={10} strokeWidth={1.5} />
+                      {rec.vouches.length}
                     </span>
                     <button
                       onClick={() => onRecClick(rec.id)}
