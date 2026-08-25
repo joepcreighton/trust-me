@@ -2,6 +2,21 @@
 
 import { useState, useEffect, useRef } from "react";
 import { X, Camera, Search, Check, ChevronDown } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  arrayMove,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { useUserProfile, type Gender } from "@/lib/user-profile-context";
 import { currentUser } from "@/lib/mock-data";
@@ -29,6 +44,71 @@ const GENDER_OPTIONS: { value: Gender; label: string }[] = [
   { value: "prefer-not-to-say", label: "Prefer not to say" },
 ];
 
+// ─── sortable city chip ───────────────────────────────────────────────────────
+
+function SortableCityChip({
+  city,
+  index,
+  onRemove,
+}: {
+  city: string;
+  index: number;
+  onRemove: (city: string) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: city });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
+  const isPrimary = index === 0;
+
+  return (
+    <span
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-full text-sm font-medium",
+        "cursor-grab active:cursor-grabbing select-none touch-none",
+        "transition-shadow",
+        isDragging && "shadow-lg opacity-80",
+        isPrimary
+          ? "bg-sage text-white"
+          : "bg-white border border-black/10 text-charcoal"
+      )}
+      {...attributes}
+      {...listeners}
+    >
+      {isPrimary && (
+        <span className="text-[9px] font-bold bg-white/20 text-white px-1.5 py-0.5 rounded uppercase tracking-wide flex-shrink-0">
+          Primary
+        </span>
+      )}
+      {city}
+      <button
+        onClick={(e) => { e.stopPropagation(); onRemove(city); }}
+        onPointerDown={(e) => e.stopPropagation()}
+        className={cn(
+          "w-4 h-4 rounded-full flex items-center justify-center transition-colors flex-shrink-0",
+          isPrimary ? "hover:bg-white/20" : "hover:bg-black/10"
+        )}
+        aria-label={`Remove ${city}`}
+      >
+        <X size={10} strokeWidth={2.5} />
+      </button>
+    </span>
+  );
+}
+
 // ─── component ────────────────────────────────────────────────────────────────
 
 interface EditProfileSheetProps {
@@ -50,6 +130,21 @@ export function EditProfileSheet({ isOpen, onClose, onSaved }: EditProfileSheetP
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const citySearchRef = useRef<HTMLInputElement>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setLocalCities((cities) => {
+        const oldIndex = cities.indexOf(active.id as string);
+        const newIndex = cities.indexOf(over.id as string);
+        return arrayMove(cities, oldIndex, newIndex);
+      });
+    }
+  }
 
   // Sync local state from context when sheet opens
   useEffect(() => {
@@ -242,33 +337,26 @@ export function EditProfileSheet({ isOpen, onClose, onSaved }: EditProfileSheetP
               First city is your primary location.
             </p>
 
-            {/* Chips */}
+            {/* Sortable chips */}
             {localCities.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {localCities.map((city, i) => (
-                  <span
-                    key={city}
-                    className={cn(
-                      "flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-full text-sm font-medium",
-                      i === 0
-                        ? "bg-sage text-white"
-                        : "bg-white border border-black/10 text-charcoal"
-                    )}
-                  >
-                    {city}
-                    <button
-                      onClick={() => removeCity(city)}
-                      className={cn(
-                        "w-4 h-4 rounded-full flex items-center justify-center transition-colors",
-                        i === 0 ? "hover:bg-white/20" : "hover:bg-black/10"
-                      )}
-                      aria-label={`Remove ${city}`}
-                    >
-                      <X size={10} strokeWidth={2.5} />
-                    </button>
-                  </span>
-                ))}
-              </div>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext items={localCities} strategy={rectSortingStrategy}>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {localCities.map((city, i) => (
+                      <SortableCityChip
+                        key={city}
+                        city={city}
+                        index={i}
+                        onRemove={removeCity}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
             )}
 
             {/* Add location button / dropdown */}

@@ -291,12 +291,15 @@ export default function ProfilePage() {
 
         {/* Stats */}
         <div className="flex items-center justify-center gap-8 mt-5">
-          <div className="flex flex-col items-center gap-0.5">
-            <span className="font-display text-[1.5rem] text-charcoal leading-tight">
+          <button
+            onClick={() => router.push("/profile/friends")}
+            className="flex flex-col items-center gap-0.5 group"
+          >
+            <span className="font-display text-[1.5rem] text-charcoal leading-tight group-hover:text-sage transition-colors">
               {currentUser.friends.length}
             </span>
             <span className="text-[11px] text-muted leading-tight">friends</span>
-          </div>
+          </button>
           <div className="w-px h-8 bg-black/8" />
           <div className="flex flex-col items-center gap-0.5">
             <span className="font-display text-[1.5rem] text-charcoal leading-tight">

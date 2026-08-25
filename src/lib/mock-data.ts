@@ -63,34 +63,42 @@ export const users: User[] = [
   currentUser,
   {
     id: "maya", name: "Maya Reyes", username: "mayar", avatar: "https://i.pravatar.cc/150?u=maya-reyes",
+    cities: ["New York City", "Chicago"],
     friends: ["ava", "sarah", "katie", "nadia", "chloe"],
   },
   {
     id: "sarah", name: "Sarah Kim", username: "sarahk", avatar: "https://i.pravatar.cc/150?u=sarah-kim",
+    cities: ["Chicago"],
     friends: ["ava", "maya", "katie", "emma", "hannah"],
   },
   {
     id: "katie", name: "Katie Walsh", username: "katiew", avatar: "https://i.pravatar.cc/150?u=katie-walsh",
+    cities: ["Los Angeles"],
     friends: ["ava", "maya", "sarah", "priya", "jasmine"],
   },
   {
     id: "priya", name: "Priya Sharma", username: "priyaS", avatar: "https://i.pravatar.cc/150?u=priya-sharma",
+    cities: ["Austin"],
     friends: ["ava", "katie", "zoe", "nadia", "jasmine"],
   },
   {
     id: "zoe", name: "Zoe Laurent", username: "zoelau", avatar: "https://i.pravatar.cc/150?u=zoe-laurent",
+    cities: ["Denver", "Los Angeles"],
     friends: ["ava", "priya", "emma", "lily", "chloe"],
   },
   {
     id: "emma", name: "Emma Park", username: "emmapark", avatar: "https://i.pravatar.cc/150?u=emma-park",
+    cities: ["New York City", "Boston"],
     friends: ["ava", "sarah", "zoe", "lily", "mia"],
   },
   {
     id: "lily", name: "Lily Thompson", username: "lilyt", avatar: "https://i.pravatar.cc/150?u=lily-thompson",
+    cities: ["Brooklyn"],
     friends: ["ava", "zoe", "emma", "nadia", "chloe"],
   },
   {
     id: "nadia", name: "Nadia Hassan", username: "nadiah", avatar: "https://i.pravatar.cc/150?u=nadia-hassan",
+    cities: ["Miami", "New York City"],
     friends: ["ava", "maya", "priya", "lily", "jasmine"],
   },
   {

@@ -230,7 +230,6 @@ export default function SettingsPage() {
       {/* ── Account ──────────────────────────────────────────────────────── */}
       <SectionHeader label="Account" />
       <Card>
-        <ActionRow label="Edit profile" />
         <ActionRow label="Manage friends" />
         <ActionRow label="Log out" destructive />
       </Card>
