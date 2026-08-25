@@ -21,15 +21,15 @@ type ProfileTab = "recs" | "looking";
 
 const ASKS_KEY = "trust-me-asks";
 
-const CATEGORY_ORDER: Category[] = ["Beauty", "Health", "Food", "Home", "Fitness", "Pets"];
+const CATEGORY_ORDER: Category[] = ["Beauty", "Health", "Home", "Fitness", "Pets", "Other"];
 
 const CATEGORY_META: Record<Category, { emoji: string; bg: string; text: string; border: string }> = {
   Beauty:  { emoji: "💅", bg: "bg-pink-50",   text: "text-pink-700",   border: "border-pink-100" },
   Health:  { emoji: "🌿", bg: "bg-teal-50",   text: "text-teal-700",   border: "border-teal-100" },
-  Food:    { emoji: "🍜", bg: "bg-orange-50", text: "text-orange-700", border: "border-orange-100" },
   Home:    { emoji: "🏡", bg: "bg-blue-50",   text: "text-blue-700",   border: "border-blue-100" },
   Fitness: { emoji: "💪", bg: "bg-purple-50", text: "text-purple-700", border: "border-purple-100" },
   Pets:    { emoji: "🐾", bg: "bg-lime-50",   text: "text-lime-700",   border: "border-lime-100" },
+  Other:   { emoji: "✦",  bg: "bg-gray-50",   text: "text-gray-600",   border: "border-gray-100" },
 };
 
 function timeAgo(ts: string) {
@@ -214,12 +214,9 @@ export default function ProfilePage() {
   );
 
   // Summary card counts
-  const beenCount = userRecs.length;
+  const recommendedCount = userRecs.length;
+  const vouchedCount = interactions.vouches.length;
   const wantToTryCount = interactions.saves.length;
-  const recsForYouCount = useMemo(
-    () => recommendations.filter((r) => currentUser.friends.includes(r.recommenderId)).length,
-    []
-  );
 
   // Recs grouped by category (only Ava's own)
   const recsByCategory = useMemo(
@@ -340,20 +337,15 @@ export default function ProfilePage() {
       {/* ── Recommendations tab ─────────────────────────────────────────── */}
       {activeTab === "recs" && (
         <div className="pt-5 pb-4">
-          {/* Beli summary cards */}
+          {/* Summary cards */}
           <div className="flex gap-3 px-4 mb-5">
-            <SummaryCard icon="✓" count={beenCount} label="Been" />
+            <SummaryCard icon="✓" count={recommendedCount} label="Recommended" />
+            <SummaryCard icon="🤝" count={vouchedCount} label="Vouched" />
             <SummaryCard
               icon="🔖"
               count={wantToTryCount}
               label="Want to Try"
               onClick={() => router.push("/saved")}
-            />
-            <SummaryCard
-              icon="♡"
-              count={recsForYouCount}
-              label="Recs for You"
-              onClick={() => router.push("/discover")}
             />
           </div>
 

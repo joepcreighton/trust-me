@@ -31,11 +31,10 @@ interface FormState {
 const CATEGORIES: Array<{ value: FormCategory; emoji: string }> = [
   { value: "Beauty", emoji: "💅" },
   { value: "Health", emoji: "🌿" },
-  { value: "Food", emoji: "🍜" },
   { value: "Home", emoji: "🏡" },
   { value: "Fitness", emoji: "💪" },
   { value: "Pets", emoji: "🐾" },
-  { value: "Other", emoji: "✨" },
+  { value: "Other", emoji: "✦" },
 ];
 
 const CITIES = [
@@ -59,10 +58,6 @@ const CATEGORY_PHOTOS: Record<string, string[]> = {
   Health: [
     "1573496359142-b8d87734a5a2",
     "1576091160399-112ba8d25d1d",
-  ],
-  Food: [
-    "1414235077428-338989a2e8c0",
-    "1555396273-367ea4eb4db5",
   ],
   Home: [
     "1484154218962-a197022b5858",

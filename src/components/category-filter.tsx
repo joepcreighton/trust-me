@@ -7,20 +7,20 @@ const categories: Array<Category | "All"> = [
   "All",
   "Beauty",
   "Health",
-  "Food",
   "Home",
   "Fitness",
   "Pets",
+  "Other",
 ];
 
 const categoryEmoji: Record<string, string> = {
   All: "✨",
   Beauty: "💅",
   Health: "🌿",
-  Food: "🍜",
   Home: "🏡",
   Fitness: "💪",
   Pets: "🐾",
+  Other: "✦",
 };
 
 interface CategoryFilterProps {

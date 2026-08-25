@@ -1,11 +1,11 @@
-export type Category = "Beauty" | "Home" | "Health" | "Food" | "Fitness" | "Pets";
+export type Category = "Beauty" | "Home" | "Health" | "Fitness" | "Pets" | "Other";
 export type SubCategory =
   | "Hair" | "Nails" | "Brows" | "Skin" | "Lashes"
   | "Cleaning" | "Handyman"
   | "Doctor" | "Dentist" | "Therapy"
-  | "Restaurant" | "Meal Prep"
   | "Trainer" | "Yoga" | "Gym"
-  | "Vet" | "Groomer";
+  | "Vet" | "Groomer"
+  | "Other";
 
 export interface User {
   id: string;
@@ -309,18 +309,6 @@ export const recommendations: Recommendation[] = [
     openNow: true,
   },
   {
-    id: "r12",
-    recommenderId: "olivia",
-    businessName: "Noodle Village",
-    category: "Food", subCategory: "Restaurant",
-    city: "Chinatown, NY", lat: 40.7158, lng: -73.997,
-    blurb: "The wonton soup changed my life. Cash only, no frills. The broth will haunt you in the best way possible. Go on a weekday before 12 if you don't want to wait.",
-    photo: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
-    timestamp: "2026-08-13T13:00:00Z",
-    likesCount: 56, vouches: ["maya", "lily", "jasmine", "mia", "aisha"], commentCount: 18,
-    reservations: false, openNow: true,
-  },
-  {
     id: "r13",
     recommenderId: "mia",
     businessName: "Roots Therapy — Dr. Kim Lee",
@@ -378,17 +366,6 @@ export const recommendations: Recommendation[] = [
     reservations: true, openNow: true,
   },
   {
-    id: "r18",
-    recommenderId: "katie",
-    businessName: "The Meal Prep Club",
-    category: "Food", subCategory: "Meal Prep",
-    city: "NYC (delivery)", lat: 40.7128, lng: -74.006,
-    blurb: "Weekly deliveries of actually interesting healthy meals. Not sad salads — Korean bibimbap bowls, Thai lettuce wraps, proper portions. Changed my Sunday completely.",
-    timestamp: "2026-08-10T16:00:00Z",
-    likesCount: 21, vouches: ["priya", "lily"], commentCount: 4,
-    delivery: true, openNow: true,
-  },
-  {
     id: "r19",
     recommenderId: "priya",
     businessName: "Studio Sol — Hot Pilates",
@@ -422,18 +399,6 @@ export const recommendations: Recommendation[] = [
     photo: "https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=800&q=80",
     timestamp: "2026-08-09T09:00:00Z",
     likesCount: 42, vouches: ["sofia", "olivia", "mia"], commentCount: 11,
-    reservations: true, openNow: true,
-  },
-  {
-    id: "r22",
-    recommenderId: "lily",
-    businessName: "The Laundry Room",
-    category: "Food", subCategory: "Restaurant",
-    city: "Lower East Side, NY", lat: 40.715, lng: -73.9845,
-    blurb: "Hidden cocktail bar vibes but with the best brunch in LES. The shrimp and grits is unreal. Make a reservation — it's tiny and they fill up.",
-    photo: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80",
-    timestamp: "2026-08-08T18:00:00Z",
-    likesCount: 49, vouches: ["olivia", "jasmine", "chloe"], commentCount: 13,
     reservations: true, openNow: true,
   },
   {
@@ -492,18 +457,6 @@ export const recommendations: Recommendation[] = [
     reservations: true, openNow: false,
   },
   {
-    id: "r28",
-    recommenderId: "mia",
-    businessName: "Blossom & Thorn",
-    category: "Food", subCategory: "Restaurant",
-    city: "Cobble Hill, NY", lat: 40.6867, lng: -73.9967,
-    blurb: "Farm-to-table Italian that isn't pretentious about it. The cacio e pepe has made me rethink every pasta I've ever eaten. Outdoor seating in the back.",
-    photo: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&q=80",
-    timestamp: "2026-08-05T18:00:00Z",
-    likesCount: 61, vouches: ["olivia", "lily", "sarah", "maya"], commentCount: 16,
-    reservations: true, delivery: true, openNow: true,
-  },
-  {
     id: "r29",
     recommenderId: "aisha",
     businessName: "Green Paws Holistic Vet",
@@ -524,18 +477,6 @@ export const recommendations: Recommendation[] = [
     timestamp: "2026-08-04T16:00:00Z",
     likesCount: 68, vouches: ["mia", "chloe", "hannah", "nadia", "priya"], commentCount: 20,
     reservations: true, openNow: false,
-  },
-  {
-    id: "r31",
-    recommenderId: "olivia",
-    businessName: "Lune Bakery",
-    category: "Food", subCategory: "Restaurant",
-    city: "Carroll Gardens, NY", lat: 40.6802, lng: -73.9997,
-    blurb: "The croissants here are genuinely life-altering. French technique, sourced local. They sell out by 9am on weekends — go early or pre-order. Worth every minute of the wait.",
-    photo: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=800&q=80",
-    timestamp: "2026-08-03T11:00:00Z",
-    likesCount: 44, vouches: ["aisha"], commentCount: 8,
-    openNow: true,
   },
   {
     id: "r32",

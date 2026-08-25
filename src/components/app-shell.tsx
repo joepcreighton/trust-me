@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { Home, Compass, Plus, Bookmark, User, Check, PlusCircle } from "lucide-react";
+import { Home, Compass, Plus, Map, User, Check, PlusCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUserRecs } from "@/lib/user-recs-context";
 import { UIContext } from "@/lib/ui-context";
@@ -16,7 +16,7 @@ const LEFT_TABS = [
 ];
 
 const RIGHT_TABS = [
-  { href: "/saved",   label: "Saved",   Icon: Bookmark },
+  { href: "/explore", label: "Explore", Icon: Map },
   { href: "/profile", label: "Profile", Icon: User },
 ];
 

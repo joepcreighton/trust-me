@@ -22,10 +22,10 @@ const ASKS_KEY = "trust-me-asks";
 const CATEGORY_STYLE: Record<Category, { bg: string; text: string }> = {
   Beauty:  { bg: "bg-pink-100",   text: "text-pink-700" },
   Health:  { bg: "bg-teal-100",   text: "text-teal-700" },
-  Food:    { bg: "bg-orange-100", text: "text-orange-700" },
   Home:    { bg: "bg-blue-100",   text: "text-blue-700" },
   Fitness: { bg: "bg-purple-100", text: "text-purple-700" },
   Pets:    { bg: "bg-lime-100",   text: "text-lime-700" },
+  Other:   { bg: "bg-gray-100",   text: "text-gray-600" },
 };
 
 function timeAgo(ts: string) {

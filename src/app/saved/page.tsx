@@ -10,15 +10,15 @@ import { cn } from "@/lib/utils";
 
 // ─── constants ───────────────────────────────────────────────────────────────
 
-const CATEGORY_ORDER: Category[] = ["Beauty", "Health", "Home", "Food", "Fitness", "Pets"];
+const CATEGORY_ORDER: Category[] = ["Beauty", "Health", "Home", "Fitness", "Pets", "Other"];
 
 const CATEGORY_META: Record<Category, { emoji: string; bg: string; text: string }> = {
   Beauty:  { emoji: "💅", bg: "bg-pink-50",   text: "text-pink-600" },
   Health:  { emoji: "🌿", bg: "bg-teal-50",   text: "text-teal-600" },
   Home:    { emoji: "🏡", bg: "bg-blue-50",   text: "text-blue-600" },
-  Food:    { emoji: "🍜", bg: "bg-orange-50", text: "text-orange-600" },
   Fitness: { emoji: "💪", bg: "bg-purple-50", text: "text-purple-600" },
   Pets:    { emoji: "🐾", bg: "bg-lime-50",   text: "text-lime-600" },
+  Other:   { emoji: "✦",  bg: "bg-gray-50",   text: "text-gray-500" },
 };
 
 // ─── compact list item ───────────────────────────────────────────────────────

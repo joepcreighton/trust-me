@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import dynamic from "next/dynamic";
-import { Search, ChevronRight, Users, TrendingUp, X, List, Map } from "lucide-react";
+import { Search, ChevronRight, Users, TrendingUp, X } from "lucide-react";
 import {
   recommendations,
   users,
@@ -16,28 +15,24 @@ import { useInteractions } from "@/lib/use-interactions";
 import { CardSheet } from "@/components/card-sheet";
 import { cn } from "@/lib/utils";
 
-// ─── map (client-only) ────────────────────────────────────────────────────────
-
-const MapView = dynamic(() => import("@/components/map-view"), { ssr: false });
-
 // ─── constants ────────────────────────────────────────────────────────────────
 
 const CATEGORIES: Array<Category | "All"> = [
-  "All", "Beauty", "Health", "Food", "Home", "Fitness", "Pets",
+  "All", "Beauty", "Health", "Home", "Fitness", "Pets", "Other",
 ];
 
 const CATEGORY_STYLE: Record<Category, { bg: string; text: string }> = {
   Beauty:  { bg: "bg-pink-100",   text: "text-pink-700" },
   Health:  { bg: "bg-teal-100",   text: "text-teal-700" },
-  Food:    { bg: "bg-orange-100", text: "text-orange-700" },
   Home:    { bg: "bg-blue-100",   text: "text-blue-700" },
   Fitness: { bg: "bg-purple-100", text: "text-purple-700" },
   Pets:    { bg: "bg-lime-100",   text: "text-lime-700" },
+  Other:   { bg: "bg-gray-100",   text: "text-gray-600" },
 };
 
-type ActionFilter = "Reserve now" | "Order" | "Open now";
+type ActionFilter = "Reserve now" | "Open now";
 
-const ACTION_FILTERS: ActionFilter[] = ["Reserve now", "Order", "Open now"];
+const ACTION_FILTERS: ActionFilter[] = ["Reserve now", "Open now"];
 
 // ─── compact discover card ────────────────────────────────────────────────────
 
@@ -51,7 +46,7 @@ function DiscoverCard({
   onClick: () => void;
 }) {
   const recommender = users.find((u) => u.id === rec.recommenderId);
-  const style = rec.category in CATEGORY_STYLE ? CATEGORY_STYLE[rec.category as Category] : null;
+  const style = CATEGORY_STYLE[rec.category as Category] ?? CATEGORY_STYLE.Other;
 
   return (
     <button
@@ -61,19 +56,15 @@ function DiscoverCard({
         isTrusted && "bg-sage-light/20"
       )}
     >
-      {/* Thumbnail */}
       <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0">
         {rec.photo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={rec.photo} alt="" className="w-full h-full object-cover" loading="lazy" />
         ) : (
-          <div className={cn("w-full h-full flex items-center justify-center text-xl", style?.bg ?? "bg-gray-100")}>
-            {!rec.photo && <span className="text-lg opacity-60">·</span>}
-          </div>
+          <div className={cn("w-full h-full flex items-center justify-center", style.bg)} />
         )}
       </div>
 
-      {/* Info */}
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-charcoal text-sm leading-tight truncate">
           {rec.businessName}
@@ -82,11 +73,9 @@ function DiscoverCard({
           by {recommender?.name.split(" ")[0]} · {rec.city}
         </p>
         <div className="flex items-center gap-3 mt-1">
-          {style && (
-            <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full", style.bg, style.text)}>
-              {rec.category}
-            </span>
-          )}
+          <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full", style.bg, style.text)}>
+            {rec.category}
+          </span>
           <span className="text-[11px] text-muted">
             ❤️ {rec.likesCount} &nbsp;·&nbsp; 🤝 {rec.vouches.length}
           </span>
@@ -124,12 +113,7 @@ function Section({
     <div className="mb-5">
       <div className="flex items-center gap-2 px-4 mb-2">
         <Icon size={14} className={isTrusted ? "text-sage" : "text-muted"} />
-        <h3
-          className={cn(
-            "text-[13px] font-bold tracking-wide uppercase",
-            isTrusted ? "text-charcoal" : "text-muted"
-          )}
-        >
+        <h3 className={cn("text-[13px] font-bold tracking-wide uppercase", isTrusted ? "text-charcoal" : "text-muted")}>
           {label}
         </h3>
         {badge && (
@@ -139,21 +123,14 @@ function Section({
         )}
       </div>
 
-      <div
-        className={cn(
-          "mx-4 rounded-2xl overflow-hidden divide-y shadow-sm shadow-black/5",
-          isTrusted
-            ? "bg-sage-light/30 divide-sage/10 ring-1 ring-sage/15"
-            : "bg-white divide-black/5"
-        )}
-      >
+      <div className={cn(
+        "mx-4 rounded-2xl overflow-hidden divide-y shadow-sm shadow-black/5",
+        isTrusted
+          ? "bg-sage-light/30 divide-sage/10 ring-1 ring-sage/15"
+          : "bg-white divide-black/5"
+      )}>
         {recs.map((rec) => (
-          <DiscoverCard
-            key={rec.id}
-            rec={rec}
-            isTrusted={isTrusted}
-            onClick={() => onCardClick(rec.id)}
-          />
+          <DiscoverCard key={rec.id} rec={rec} isTrusted={isTrusted} onClick={() => onCardClick(rec.id)} />
         ))}
       </div>
 
@@ -166,13 +143,7 @@ function Section({
 
 // ─── flat results ─────────────────────────────────────────────────────────────
 
-function FlatResults({
-  recs,
-  onCardClick,
-}: {
-  recs: Recommendation[];
-  onCardClick: (id: string) => void;
-}) {
+function FlatResults({ recs, onCardClick }: { recs: Recommendation[]; onCardClick: (id: string) => void }) {
   if (recs.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
@@ -181,7 +152,6 @@ function FlatResults({
       </div>
     );
   }
-
   return (
     <div className="mb-4">
       <p className="text-xs font-bold text-muted uppercase tracking-wide px-4 mb-2">
@@ -204,44 +174,27 @@ export default function DiscoverPage() {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<Category | "All">("All");
   const [activeFilters, setActiveFilters] = useState<Set<ActionFilter>>(new Set());
-  const [view, setView] = useState<"list" | "map">("list");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const allRecs = useMemo(() => [...userRecs, ...recommendations], [userRecs]);
   const friends = users.filter((u) => u.id !== currentUser.id);
 
-  // vouch chain counts per rec (number of chains)
-  const vouchChainCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const [id, chains] of Object.entries(interactions.vouchChains)) {
-      counts[id] = chains.length;
-    }
-    return counts;
-  }, [interactions.vouchChains]);
-
-  // ── toggle action filter ───────────────────────────────────────────────────
   function toggleFilter(f: ActionFilter) {
     setActiveFilters((prev) => {
       const next = new Set(prev);
-      if (next.has(f)) next.delete(f);
-      else next.add(f);
+      if (next.has(f)) next.delete(f); else next.add(f);
       return next;
     });
   }
 
-  // ── filtering ─────────────────────────────────────────────────────────────
   const isFiltered = query.trim().length > 0 || activeCategory !== "All" || activeFilters.size > 0;
 
   const filteredRecs = useMemo(() => {
     const q = query.toLowerCase().trim();
     return allRecs.filter((r) => {
-      const matchCat = activeCategory === "All" || r.category === activeCategory;
-      if (!matchCat) return false;
-
+      if (activeCategory !== "All" && r.category !== activeCategory) return false;
       if (activeFilters.has("Reserve now") && !r.reservations) return false;
-      if (activeFilters.has("Order") && !r.delivery) return false;
       if (activeFilters.has("Open now") && !r.openNow) return false;
-
       if (!q) return true;
       const recommender = users.find((u) => u.id === r.recommenderId);
       return (
@@ -253,49 +206,37 @@ export default function DiscoverPage() {
     });
   }, [allRecs, query, activeCategory, activeFilters]);
 
-  // ── sections (unfiltered list view) ──────────────────────────────────────
   const fromYourPeople = useMemo(
-    () =>
-      allRecs
-        .filter((r) => avasDirectFriendIds.has(r.recommenderId))
-        .sort((a, b) => b.vouches.length - a.vouches.length)
-        .slice(0, 3),
+    () => allRecs.filter((r) => avasDirectFriendIds.has(r.recommenderId))
+      .sort((a, b) => b.vouches.length - a.vouches.length).slice(0, 3),
     [allRecs]
   );
 
   const friendsOfFriends = useMemo(
-    () =>
-      allRecs
-        .filter((r) => !avasDirectFriendIds.has(r.recommenderId) && r.recommenderId !== currentUser.id)
-        .sort((a, b) => b.likesCount - a.likesCount)
-        .slice(0, 2),
+    () => allRecs.filter((r) => !avasDirectFriendIds.has(r.recommenderId) && r.recommenderId !== currentUser.id)
+      .sort((a, b) => b.likesCount - a.likesCount).slice(0, 2),
     [allRecs]
   );
 
   const popularNearby = useMemo(
-    () =>
-      allRecs
-        .sort((a, b) => b.likesCount + b.vouches.length * 2 - (a.likesCount + a.vouches.length * 2))
-        .slice(0, 3),
+    () => [...allRecs].sort((a, b) =>
+      (b.likesCount + b.vouches.length * 2) - (a.likesCount + a.vouches.length * 2)
+    ).slice(0, 3),
     [allRecs]
   );
 
-  // ── selected card ─────────────────────────────────────────────────────────
   const selectedRec = selectedId ? allRecs.find((r) => r.id === selectedId) ?? null : null;
   const selectedRecommender = selectedRec
     ? (users.find((u) => u.id === selectedRec.recommenderId) ?? currentUser)
     : currentUser;
 
-  const hasActiveFilters = isFiltered || view === "map";
-  const recsForMap = isFiltered ? filteredRecs : allRecs;
-
   return (
     <>
       <div className="pt-4 pb-4">
 
-        {/* ── Search + view toggle ────────────────────────────────────────── */}
-        <div className="px-4 mb-3 flex items-center gap-2">
-          <div className="relative flex-1">
+        {/* Search */}
+        <div className="px-4 mb-3">
+          <div className="relative">
             <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted" />
             <input
               type="search"
@@ -305,41 +246,14 @@ export default function DiscoverPage() {
               className="w-full pl-10 pr-10 py-3 rounded-2xl bg-white border border-black/10 text-charcoal text-sm placeholder:text-muted/60 focus:outline-none focus:border-sage focus:ring-2 focus:ring-sage/20 transition-all"
             />
             {query && (
-              <button
-                onClick={() => setQuery("")}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted hover:text-charcoal"
-              >
+              <button onClick={() => setQuery("")} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted hover:text-charcoal">
                 <X size={15} />
               </button>
             )}
           </div>
-
-          {/* List / Map toggle */}
-          <div className="flex items-center bg-white border border-black/10 rounded-xl overflow-hidden flex-shrink-0">
-            <button
-              onClick={() => setView("list")}
-              className={cn(
-                "flex items-center gap-1 px-3 py-2.5 text-xs font-semibold transition-colors",
-                view === "list" ? "bg-sage text-white" : "text-muted"
-              )}
-            >
-              <List size={13} />
-              <span>List</span>
-            </button>
-            <button
-              onClick={() => setView("map")}
-              className={cn(
-                "flex items-center gap-1 px-3 py-2.5 text-xs font-semibold transition-colors",
-                view === "map" ? "bg-sage text-white" : "text-muted"
-              )}
-            >
-              <Map size={13} />
-              <span>Map</span>
-            </button>
-          </div>
         </div>
 
-        {/* ── Category chips ──────────────────────────────────────────────── */}
+        {/* Category chips */}
         <div className="flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar mb-2">
           {CATEGORIES.map((cat) => (
             <button
@@ -357,60 +271,32 @@ export default function DiscoverPage() {
           ))}
         </div>
 
-        {/* ── Action filter pills ─────────────────────────────────────────── */}
+        {/* Action filter pills */}
         <div className="flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar mb-4">
-          {ACTION_FILTERS.map((f) => {
-            const active = activeFilters.has(f);
-            return (
-              <button
-                key={f}
-                onClick={() => toggleFilter(f)}
-                className={cn(
-                  "flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-all",
-                  active
-                    ? "bg-charcoal text-white border-charcoal"
-                    : "bg-white text-charcoal/70 border-black/10 hover:border-black/25"
-                )}
-              >
-                {f}
-              </button>
-            );
-          })}
+          {ACTION_FILTERS.map((f) => (
+            <button
+              key={f}
+              onClick={() => toggleFilter(f)}
+              className={cn(
+                "flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-all",
+                activeFilters.has(f)
+                  ? "bg-charcoal text-white border-charcoal"
+                  : "bg-white text-charcoal/70 border-black/10 hover:border-black/25"
+              )}
+            >
+              {f}
+            </button>
+          ))}
         </div>
 
-        {/* ── Content ─────────────────────────────────────────────────────── */}
-        {view === "map" ? (
-          <MapView
-            recs={recsForMap}
-            vouchChainCounts={vouchChainCounts}
-            onRecClick={setSelectedId}
-            onSwitchToList={() => setView("list")}
-          />
-        ) : isFiltered ? (
+        {/* Content */}
+        {isFiltered ? (
           <FlatResults recs={filteredRecs} onCardClick={setSelectedId} />
         ) : (
           <>
-            <Section
-              icon={Users}
-              label="From your people"
-              badge="Most trusted"
-              badgeStyle="bg-sage text-white"
-              recs={fromYourPeople}
-              isTrusted
-              onCardClick={setSelectedId}
-            />
-            <Section
-              icon={Users}
-              label="Friends of friends"
-              recs={friendsOfFriends}
-              onCardClick={setSelectedId}
-            />
-            <Section
-              icon={TrendingUp}
-              label="Popular in your area"
-              recs={popularNearby}
-              onCardClick={setSelectedId}
-            />
+            <Section icon={Users} label="From your people" badge="Most trusted" badgeStyle="bg-sage text-white" recs={fromYourPeople} isTrusted onCardClick={setSelectedId} />
+            <Section icon={Users} label="Friends of friends" recs={friendsOfFriends} onCardClick={setSelectedId} />
+            <Section icon={TrendingUp} label="Popular in your area" recs={popularNearby} onCardClick={setSelectedId} />
           </>
         )}
       </div>
@@ -426,11 +312,7 @@ export default function DiscoverPage() {
         isSaved={selectedId ? interactions.saves.includes(selectedId) : false}
         onToggleLike={() => selectedId && toggle("likes", selectedId)}
         onToggleSave={() => selectedId && toggle("saves", selectedId)}
-        onVouch={(chain) => {
-          if (!selectedId) return;
-          addVouch(selectedId);
-          if (chain) addVouchChain(selectedId, chain);
-        }}
+        onVouch={(chain) => { if (!selectedId) return; addVouch(selectedId); if (chain) addVouchChain(selectedId, chain); }}
         onUnvouch={() => selectedId && removeVouch(selectedId)}
         onDisagree={(comment) => selectedId && addDisagreement(selectedId, comment)}
         vouchChains={selectedId ? (interactions.vouchChains[selectedId] ?? []) : []}

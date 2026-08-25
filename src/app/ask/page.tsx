@@ -20,20 +20,20 @@ import { cn } from "@/lib/utils";
 
 // ─── constants ───────────────────────────────────────────────────────────────
 
-const CATEGORIES: Category[] = ["Beauty", "Health", "Food", "Home", "Fitness", "Pets"];
+const CATEGORIES: Category[] = ["Beauty", "Health", "Home", "Fitness", "Pets", "Other"];
 
 const CATEGORY_EMOJI: Record<string, string> = {
-  Beauty: "💅", Health: "🌿", Food: "🍜",
-  Home: "🏡", Fitness: "💪", Pets: "🐾",
+  Beauty: "💅", Health: "🌿", Home: "🏡",
+  Fitness: "💪", Pets: "🐾", Other: "✦",
 };
 
 const CATEGORY_STYLE: Record<Category, { bg: string; text: string }> = {
   Beauty:  { bg: "bg-pink-100",   text: "text-pink-700" },
   Health:  { bg: "bg-teal-100",   text: "text-teal-700" },
-  Food:    { bg: "bg-orange-100", text: "text-orange-700" },
   Home:    { bg: "bg-blue-100",   text: "text-blue-700" },
   Fitness: { bg: "bg-purple-100", text: "text-purple-700" },
   Pets:    { bg: "bg-lime-100",   text: "text-lime-700" },
+  Other:   { bg: "bg-gray-100",   text: "text-gray-600" },
 };
 
 const STORAGE_KEY = "trust-me-asks";

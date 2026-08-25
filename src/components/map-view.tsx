@@ -12,10 +12,10 @@ import { cn } from "@/lib/utils";
 const CATEGORY_COLOR: Record<Category, string> = {
   Beauty:  "#db2777",
   Health:  "#0d9488",
-  Food:    "#ea580c",
   Home:    "#2563eb",
   Fitness: "#7c3aed",
   Pets:    "#65a30d",
+  Other:   "#6b7280",
 };
 
 // ─── custom pin icon ──────────────────────────────────────────────────────────
@@ -62,7 +62,7 @@ interface MapViewProps {
   recs: Recommendation[];
   vouchChainCounts: Record<string, number>;
   onRecClick: (id: string) => void;
-  onSwitchToList: () => void;
+  onSwitchToList?: () => void;
 }
 
 // ─── component ────────────────────────────────────────────────────────────────
@@ -128,19 +128,21 @@ export default function MapView({ recs, vouchChainCounts, onRecClick, onSwitchTo
         })}
       </MapContainer>
 
-      {/* View List button */}
-      <button
-        onClick={onSwitchToList}
-        className={cn(
-          "absolute bottom-4 right-4 z-[1000]",
-          "flex items-center gap-1.5 px-4 py-2.5 rounded-full",
-          "bg-white shadow-lg shadow-black/20 border border-black/8",
-          "text-sm font-semibold text-gray-800",
-          "active:scale-95 transition-transform"
-        )}
-      >
-        ☰ View List
-      </button>
+      {/* View List button — only shown when a handler is provided */}
+      {onSwitchToList && (
+        <button
+          onClick={onSwitchToList}
+          className={cn(
+            "absolute bottom-4 right-4 z-[1000]",
+            "flex items-center gap-1.5 px-4 py-2.5 rounded-full",
+            "bg-white shadow-lg shadow-black/20 border border-black/8",
+            "text-sm font-semibold text-gray-800",
+            "active:scale-95 transition-transform"
+          )}
+        >
+          ☰ View List
+        </button>
+      )}
 
       {/* Attribution small */}
       <div className="absolute bottom-2 left-2 z-[1000] text-[9px] text-gray-400">
