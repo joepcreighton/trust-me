@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search, ChevronRight, Users, TrendingUp, X } from "lucide-react";
+import { Search, ChevronRight, Users, TrendingUp, X, MapPin, ChevronDown } from "lucide-react";
 import {
   recommendations,
   users,
   currentUser,
   avasDirectFriendIds,
+  avaLocation,
+  CITY_NEIGHBORHOODS,
   Category,
   Recommendation,
   ExternalResult,
@@ -15,6 +17,7 @@ import {
 import { useUserRecs } from "@/lib/user-recs-context";
 import { useInteractions } from "@/lib/use-interactions";
 import { CardSheet } from "@/components/card-sheet";
+import { LocationSheet, LocationFilter } from "@/components/location-sheet";
 import { cn } from "@/lib/utils";
 
 // ─── constants ────────────────────────────────────────────────────────────────
@@ -37,9 +40,30 @@ const SOURCE_DOT: Record<"Yelp" | "Google", string> = {
   Google: "bg-[#4285f4]",
 };
 
-type ActionFilter = "Reserve now" | "Open now";
+type ActionFilter = "Recs Nearby" | "Open now" | "Take appointments";
 
-const ACTION_FILTERS: ActionFilter[] = ["Reserve now", "Open now"];
+const ACTION_FILTERS: ActionFilter[] = ["Recs Nearby", "Open now", "Take appointments"];
+
+function distanceMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 3959;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function locationPillLabel(filter: LocationFilter): string {
+  switch (filter.type) {
+    case "all": return "City";
+    case "city": return filter.city;
+    case "neighborhood": return filter.neighborhood;
+    case "custom": return filter.query.length > 14 ? filter.query.slice(0, 14) + "…" : filter.query;
+  }
+}
 
 // ─── compact discover card ────────────────────────────────────────────────────
 
@@ -225,6 +249,8 @@ export default function DiscoverPage() {
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<Category | "All">("All");
   const [activeFilters, setActiveFilters] = useState<Set<ActionFilter>>(new Set());
+  const [locationFilter, setLocationFilter] = useState<LocationFilter>({ type: "all" });
+  const [locationSheetOpen, setLocationSheetOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const allRecs = useMemo(() => [...userRecs, ...recommendations], [userRecs]);
@@ -238,14 +264,35 @@ export default function DiscoverPage() {
     });
   }
 
-  const isFiltered = query.trim().length > 0 || activeCategory !== "All" || activeFilters.size > 0;
+  const isFiltered =
+    query.trim().length > 0 ||
+    activeCategory !== "All" ||
+    activeFilters.size > 0 ||
+    locationFilter.type !== "all";
 
   const filteredRecs = useMemo(() => {
     const q = query.toLowerCase().trim();
     return allRecs.filter((r) => {
       if (activeCategory !== "All" && r.category !== activeCategory) return false;
-      if (activeFilters.has("Reserve now") && !r.reservations) return false;
+
+      // Location filter
+      if (locationFilter.type === "city") {
+        const nbs = CITY_NEIGHBORHOODS[locationFilter.city] ?? [];
+        if (!nbs.includes(r.neighborhood ?? "")) return false;
+      } else if (locationFilter.type === "neighborhood") {
+        if (r.neighborhood !== locationFilter.neighborhood) return false;
+      } else if (locationFilter.type === "custom") {
+        const lq = locationFilter.query.toLowerCase();
+        if (!r.city.toLowerCase().includes(lq) && !(r.neighborhood?.toLowerCase().includes(lq) ?? false)) return false;
+      }
+
+      // Action filters
+      if (activeFilters.has("Recs Nearby")) {
+        if (r.lat == null || r.lng == null || distanceMiles(avaLocation.lat, avaLocation.lng, r.lat, r.lng) > 5) return false;
+      }
       if (activeFilters.has("Open now") && !r.openNow) return false;
+      if (activeFilters.has("Take appointments") && !r.reservations) return false;
+
       if (!q) return true;
       const recommender = users.find((u) => u.id === r.recommenderId);
       return (
@@ -255,7 +302,7 @@ export default function DiscoverPage() {
         recommender?.name.toLowerCase().includes(q)
       );
     });
-  }, [allRecs, query, activeCategory, activeFilters]);
+  }, [allRecs, query, activeCategory, activeFilters, locationFilter]);
 
   const hasNetworkResults = useMemo(
     () => filteredRecs.some((r) => avasDirectFriendIds.has(r.recommenderId)),
@@ -328,8 +375,24 @@ export default function DiscoverPage() {
           ))}
         </div>
 
-        {/* Action filter pills */}
+        {/* Filter pills: City + action filters */}
         <div className="flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar mb-4">
+          {/* Location pill */}
+          <button
+            onClick={() => setLocationSheetOpen(true)}
+            className={cn(
+              "flex-shrink-0 flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-all",
+              locationFilter.type !== "all"
+                ? "bg-sage text-white border-sage shadow-sm"
+                : "bg-white text-charcoal/70 border-black/10 hover:border-black/25"
+            )}
+          >
+            <MapPin size={11} />
+            <span>{locationPillLabel(locationFilter)}</span>
+            <ChevronDown size={10} />
+          </button>
+
+          {/* Action filter pills */}
           {ACTION_FILTERS.map((f) => (
             <button
               key={f}
@@ -395,6 +458,14 @@ export default function DiscoverPage() {
         onDisagree={(comment) => selectedId && addDisagreement(selectedId, comment)}
         vouchChains={selectedId ? (interactions.vouchChains[selectedId] ?? []) : []}
         disagreements={selectedId ? (interactions.disagreements[selectedId] ?? []) : []}
+      />
+
+      <LocationSheet
+        isOpen={locationSheetOpen}
+        userCities={currentUser.cities ?? []}
+        currentFilter={locationFilter}
+        onClose={() => setLocationSheetOpen(false)}
+        onSelect={setLocationFilter}
       />
     </>
   );
