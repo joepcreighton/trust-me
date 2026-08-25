@@ -3,6 +3,7 @@ import { Inter, DM_Serif_Display } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/app-shell";
 import { UserRecsProvider } from "@/lib/user-recs-context";
+import { SettingsProvider } from "@/lib/settings-context";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -38,9 +39,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${inter.variable} ${dmSerif.variable}`}>
       <body>
-        <UserRecsProvider>
-          <AppShell>{children}</AppShell>
-        </UserRecsProvider>
+        <SettingsProvider>
+          <UserRecsProvider>
+            <AppShell>{children}</AppShell>
+          </UserRecsProvider>
+        </SettingsProvider>
       </body>
     </html>
   );

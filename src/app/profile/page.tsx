@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronRight, Sparkles, MessageSquare } from "lucide-react";
+import { ChevronDown, ChevronRight, Sparkles, MessageSquare, Settings, Lock } from "lucide-react";
 import {
   recommendations,
   users,
@@ -14,6 +14,7 @@ import {
 } from "@/lib/mock-data";
 import { useUserRecs } from "@/lib/user-recs-context";
 import { useInteractions } from "@/lib/use-interactions";
+import { useSettings } from "@/lib/settings-context";
 import { cn } from "@/lib/utils";
 
 type ProfileTab = "recs" | "looking";
@@ -193,6 +194,7 @@ export default function ProfilePage() {
 
   const { userRecs } = useUserRecs();
   const { interactions } = useInteractions();
+  const { settings } = useSettings();
 
   useEffect(() => {
     try {
@@ -234,7 +236,16 @@ export default function ProfilePage() {
   return (
     <div>
       {/* ── Profile header ──────────────────────────────────────────────── */}
-      <div className="px-5 pt-6 pb-5 text-center">
+      <div className="px-5 pt-6 pb-5 text-center relative">
+        {/* Gear icon */}
+        <button
+          onClick={() => router.push("/settings")}
+          aria-label="Settings"
+          className="absolute top-0 right-0 w-9 h-9 flex items-center justify-center rounded-full text-muted hover:text-charcoal hover:bg-black/5 transition-colors"
+        >
+          <Settings size={18} strokeWidth={1.75} />
+        </button>
+
         <div className="relative inline-block mb-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -248,7 +259,7 @@ export default function ProfilePage() {
         <h2 className="font-display text-2xl text-charcoal leading-tight">{currentUser.name}</h2>
         <p className="text-sm text-muted mt-0.5">@{currentUser.username}</p>
 
-        {cityLine && (
+        {cityLine && settings.showCity && (
           <p className="text-sm text-muted mt-1.5">📍 {cityLine}</p>
         )}
 
@@ -280,6 +291,17 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* ── Privacy banner ─────────────────────────────────────────────── */}
+      {settings.profileVisibility === "friends" && (
+        <div className="mx-4 mb-3 flex items-start gap-2.5 bg-sage-light/60 rounded-xl px-3.5 py-3 border border-sage/15">
+          <Lock size={14} className="text-sage flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-charcoal/75 leading-relaxed">
+            <span className="font-semibold text-charcoal">Friends only.</span>{" "}
+            Non-friends see an &ldquo;Add as friend to see recommendations&rdquo; prompt instead of your recs.
+          </p>
+        </div>
+      )}
 
       {/* ── Tab bar ─────────────────────────────────────────────────────── */}
       <div className="flex border-b border-black/8 bg-cream sticky top-0 z-10">
