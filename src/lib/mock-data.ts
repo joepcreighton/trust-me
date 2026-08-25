@@ -7,12 +7,16 @@ export type SubCategory =
   | "Vet" | "Groomer"
   | "Other";
 
+export type Gender = "woman" | "man" | "non-binary" | "prefer-not-to-say";
+
 export interface User {
   id: string;
   name: string;
   username: string;
   avatar: string;
+  bio?: string;
   cities?: string[];
+  gender?: Gender;
   friends: string[];
 }
 
@@ -49,7 +53,9 @@ export const currentUser: User = {
   name: "Ava Chen",
   username: "avachen",
   avatar: "https://i.pravatar.cc/150?u=ava-chen",
+  bio: "I only share what I'd genuinely tell a close friend.",
   cities: ["New York City", "San Diego", "Denver"],
+  gender: "woman",
   friends: ["maya", "sarah", "katie", "priya", "zoe", "emma", "lily", "nadia"],
 };
 

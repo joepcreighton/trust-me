@@ -3,6 +3,7 @@ import { Inter, DM_Serif_Display } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/app-shell";
 import { UserRecsProvider } from "@/lib/user-recs-context";
+import { UserProfileProvider } from "@/lib/user-profile-context";
 import { SettingsProvider } from "@/lib/settings-context";
 
 const inter = Inter({
@@ -41,7 +42,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <SettingsProvider>
           <UserRecsProvider>
-            <AppShell>{children}</AppShell>
+            <UserProfileProvider>
+              <AppShell>{children}</AppShell>
+            </UserProfileProvider>
           </UserRecsProvider>
         </SettingsProvider>
       </body>

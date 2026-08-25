@@ -14,8 +14,10 @@ import {
   Recommendation,
 } from "@/lib/mock-data";
 import { useUserRecs } from "@/lib/user-recs-context";
+import { useUserProfile } from "@/lib/user-profile-context";
 import { useInteractions } from "@/lib/use-interactions";
 import { useSettings } from "@/lib/settings-context";
+import { EditProfileSheet } from "@/components/edit-profile-sheet";
 import { cn } from "@/lib/utils";
 
 type ProfileTab = "recs" | "looking";
@@ -194,8 +196,11 @@ export default function ProfilePage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<ProfileTab>("recs");
   const [userAsks, setUserAsks] = useState<Ask[]>([]);
+  const [editOpen, setEditOpen] = useState(false);
+  const [savedToast, setSavedToast] = useState(false);
 
   const { userRecs } = useUserRecs();
+  const { profile } = useUserProfile();
   const { interactions } = useInteractions();
   const { settings } = useSettings();
 
@@ -231,7 +236,12 @@ export default function ProfilePage() {
     [userRecs]
   );
 
-  const cityLine = currentUser.cities?.join(" + ");
+  const cityLine = profile.cities.length > 0 ? profile.cities.join(" · ") : null;
+
+  function handleProfileSaved() {
+    setSavedToast(true);
+    setTimeout(() => setSavedToast(false), 2500);
+  }
 
   return (
     <div>
@@ -249,7 +259,7 @@ export default function ProfilePage() {
         <div className="relative inline-block mb-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={currentUser.avatar}
+            src={profile.avatar}
             alt={currentUser.name}
             className="w-24 h-24 rounded-full object-cover ring-4 ring-sage-light"
           />
@@ -259,16 +269,25 @@ export default function ProfilePage() {
         <h2 className="font-display text-2xl text-charcoal leading-tight">{currentUser.name}</h2>
         <p className="text-sm text-muted mt-0.5">@{currentUser.username}</p>
 
+        <button
+          onClick={() => setEditOpen(true)}
+          className="mt-2.5 px-4 py-1.5 rounded-full border border-sage/50 text-sage text-xs font-semibold hover:bg-sage-light transition-colors"
+        >
+          Edit profile
+        </button>
+
         {cityLine && settings.showCity && (
-          <p className="flex items-center justify-center gap-1.5 text-sm text-muted mt-1.5">
+          <p className="flex items-center justify-center gap-1.5 text-sm text-muted mt-3">
             <MapPin size={13} strokeWidth={1.75} className="text-muted/70" />
             {cityLine}
           </p>
         )}
 
-        <p className="text-sm text-charcoal/75 italic mt-3 max-w-[260px] mx-auto leading-relaxed">
-          &ldquo;I only share what I&apos;d genuinely tell a close friend.&rdquo;
-        </p>
+        {profile.bio && (
+          <p className="text-sm text-charcoal/75 italic mt-3 max-w-[260px] mx-auto leading-relaxed">
+            &ldquo;{profile.bio}&rdquo;
+          </p>
+        )}
 
         {/* Stats */}
         <div className="flex items-center justify-center gap-8 mt-5">
@@ -408,6 +427,29 @@ export default function ProfilePage() {
           )}
         </div>
       )}
+
+      {/* Edit profile sheet */}
+      <EditProfileSheet
+        isOpen={editOpen}
+        onClose={() => setEditOpen(false)}
+        onSaved={handleProfileSaved}
+      />
+
+      {/* Saved toast */}
+      <div
+        className={cn(
+          "fixed top-20 left-1/2 -translate-x-1/2 z-[70]",
+          "flex items-center gap-2 px-4 py-2.5 rounded-2xl",
+          "bg-charcoal text-white text-sm font-medium shadow-lg",
+          "transition-all duration-300",
+          savedToast
+            ? "opacity-100 translate-y-0"
+            : "opacity-0 -translate-y-2 pointer-events-none"
+        )}
+      >
+        <Check size={15} strokeWidth={2.5} className="flex-shrink-0" />
+        Profile updated
+      </div>
     </div>
   );
 }
