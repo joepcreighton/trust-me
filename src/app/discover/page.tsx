@@ -65,6 +65,95 @@ function locationPillLabel(filter: LocationFilter): string {
   }
 }
 
+// ─── recs for you ────────────────────────────────────────────────────────────
+
+const RECS_FOR_YOU_DATA: { recId: string; reason: string }[] = [
+  { recId: "r3",  reason: "Because you save beauty recs" },
+  { recId: "r5",  reason: "Trending with wellness fans in your circle" },
+  { recId: "r1",  reason: "Top color studio in Brooklyn — where you spend time" },
+  { recId: "r19", reason: "People who love yoga are loving this" },
+  { recId: "r21", reason: "Highest-vouched pet care near Park Slope" },
+  { recId: "r10", reason: "Popular with people who share your taste" },
+];
+
+function RecsForYouCard({
+  rec,
+  reason,
+  onClick,
+}: {
+  rec: Recommendation;
+  reason: string;
+  onClick: () => void;
+}) {
+  const style = CATEGORY_STYLE[rec.category as Category] ?? CATEGORY_STYLE.Other;
+  return (
+    <button
+      onClick={onClick}
+      className="flex-shrink-0 w-[168px] rounded-2xl overflow-hidden bg-white shadow-sm shadow-black/8 active:scale-[0.97] transition-transform text-left"
+    >
+      <div className="h-[128px] w-full overflow-hidden relative">
+        {rec.photo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={rec.photo} alt="" className="w-full h-full object-cover" loading="lazy" />
+        ) : (
+          <div className={cn("w-full h-full", style.bg)} />
+        )}
+        <span className={cn(
+          "absolute top-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full",
+          "bg-white/85 backdrop-blur-sm",
+          style.text
+        )}>
+          {rec.subCategory}
+        </span>
+      </div>
+
+      <div className="p-3">
+        <p className="font-semibold text-charcoal text-[13px] leading-tight line-clamp-2">{rec.businessName}</p>
+        <p className="text-[10px] text-muted mt-0.5 truncate">{rec.neighborhood ?? rec.city}</p>
+
+        <div className="flex items-start gap-1 mt-2.5">
+          <span className="text-sage text-[10px] mt-[1px] flex-shrink-0">✦</span>
+          <p className="text-[10px] text-muted/80 leading-relaxed line-clamp-2">{reason}</p>
+        </div>
+
+        <div className="flex items-center gap-2.5 mt-2">
+          <span className="text-[10px] text-muted/60">🤝 {rec.vouches.length}</span>
+          <span className="text-[10px] text-muted/60">❤️ {rec.likesCount}</span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function RecsForYouSection({
+  items,
+  onCardClick,
+}: {
+  items: { rec: Recommendation; reason: string }[];
+  onCardClick: (id: string) => void;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <div className="mb-6">
+      <div className="px-4 mb-3">
+        <h2 className="font-display text-[1.05rem] font-bold text-charcoal leading-tight">Recs for You</h2>
+        <p className="text-[11px] text-muted mt-0.5">Based on your taste &amp; activity</p>
+      </div>
+      <div className="flex gap-3 overflow-x-auto pl-4 pb-2 no-scrollbar">
+        {items.map(({ rec, reason }) => (
+          <RecsForYouCard
+            key={rec.id}
+            rec={rec}
+            reason={reason}
+            onClick={() => onCardClick(rec.id)}
+          />
+        ))}
+        <div className="flex-shrink-0 w-2" />
+      </div>
+    </div>
+  );
+}
+
 // ─── compact discover card ────────────────────────────────────────────────────
 
 function DiscoverCard({
@@ -329,6 +418,16 @@ export default function DiscoverPage() {
     [allRecs]
   );
 
+  const recsForYou = useMemo(() =>
+    RECS_FOR_YOU_DATA
+      .map(({ recId, reason }) => {
+        const rec = allRecs.find((r) => r.id === recId);
+        return rec ? { rec, reason } : null;
+      })
+      .filter((item): item is { rec: Recommendation; reason: string } => item !== null),
+    [allRecs]
+  );
+
   const selectedRec = selectedId ? allRecs.find((r) => r.id === selectedId) ?? null : null;
   const selectedRecommender = selectedRec
     ? (users.find((u) => u.id === selectedRec.recommenderId) ?? currentUser)
@@ -435,6 +534,7 @@ export default function DiscoverPage() {
           </>
         ) : (
           <>
+            <RecsForYouSection items={recsForYou} onCardClick={setSelectedId} />
             <Section icon={Users} label="From your people" badge="Most trusted" badgeStyle="bg-sage text-white" recs={fromYourPeople} isTrusted onCardClick={setSelectedId} />
             <Section icon={Users} label="Friends of friends" recs={friendsOfFriends} onCardClick={setSelectedId} />
             <Section icon={TrendingUp} label="Popular in your area" recs={popularNearby} onCardClick={setSelectedId} />
