@@ -11,16 +11,17 @@ CREATE EXTENSION IF NOT EXISTS "pg_trgm";  -- fuzzy search (used later)
 -- ─── TABLES ──────────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS public.users (
-  id          UUID        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  handle      TEXT        UNIQUE NOT NULL,
-  full_name   TEXT        NOT NULL,
-  bio         TEXT        CHECK (char_length(bio) <= 150),
-  avatar_url  TEXT,
-  gender      TEXT        CHECK (gender IN ('woman', 'man', 'non-binary', 'prefer-not-to-say')),
-  locations   JSONB       NOT NULL DEFAULT '[]'::jsonb,
+  id                  UUID        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  handle              TEXT        UNIQUE NOT NULL,
+  full_name           TEXT        NOT NULL,
+  bio                 TEXT        CHECK (char_length(bio) <= 150),
+  avatar_url          TEXT,
+  gender              TEXT        CHECK (gender IN ('woman', 'man', 'non-binary', 'prefer-not-to-say')),
+  locations           JSONB       NOT NULL DEFAULT '[]'::jsonb,
   -- locations shape: [{ city: string, state: string, neighborhood?: string }]
   -- first element is primary location
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  onboarding_complete BOOLEAN     NOT NULL DEFAULT false,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS public.recommendations (

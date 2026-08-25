@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import { useSettings, Settings } from "@/lib/settings-context";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { ReactNode } from "react";
 
@@ -141,6 +142,12 @@ export default function SettingsPage() {
     return (value: Settings[K]) => updateSetting(key, value);
   }
 
+  async function handleSignOut() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.replace("/sign-in");
+  }
+
   return (
     <div className="pb-8">
       {/* Sub-header */}
@@ -230,8 +237,8 @@ export default function SettingsPage() {
       {/* ── Account ──────────────────────────────────────────────────────── */}
       <SectionHeader label="Account" />
       <Card>
-        <ActionRow label="Manage friends" />
-        <ActionRow label="Log out" destructive />
+        <ActionRow label="Manage friends" onClick={() => router.push("/profile/friends")} />
+        <ActionRow label="Log out" destructive onClick={handleSignOut} />
       </Card>
     </div>
   );

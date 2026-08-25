@@ -2,7 +2,8 @@
 
 import { useState, useMemo } from "react";
 import dynamic from "next/dynamic";
-import { recommendations, users, currentUser, Category, Recommendation } from "@/lib/mock-data";
+import { recommendations, users, Category, Recommendation } from "@/lib/mock-data";
+import { useCurrentUser } from "@/lib/auth-context";
 import { useUserRecs } from "@/lib/user-recs-context";
 import { useInteractions } from "@/lib/use-interactions";
 import { CardSheet } from "@/components/card-sheet";
@@ -23,6 +24,7 @@ const ACTION_FILTERS: ActionFilter[] = ["Reserve now", "Open now"];
 // ─── page ─────────────────────────────────────────────────────────────────────
 
 export default function ExplorePage() {
+  const currentUser = useCurrentUser();
   const { userRecs } = useUserRecs();
   const { interactions, toggle, addVouch, removeVouch, addVouchChain, addDisagreement } = useInteractions();
   const [activeCategory, setActiveCategory] = useState<Category | "All">("All");

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { User, currentUser } from "@/lib/mock-data";
+import { User } from "@/lib/mock-data";
+import { useCurrentUser } from "@/lib/auth-context";
 
 interface VouchSheetProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export function VouchSheet({
   onVouch,
   onSaveInstead,
 }: VouchSheetProps) {
+  const currentUser = useCurrentUser();
   const [step, setStep] = useState<1 | 2>(1);
 
   function handleClose() {

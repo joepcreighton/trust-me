@@ -9,7 +9,6 @@ import { useUserRecs } from "@/lib/user-recs-context";
 import { UIContext } from "@/lib/ui-context";
 import { RecommendSheet } from "./recommend-sheet";
 import { SplashScreen } from "./splash-screen";
-import { OnboardingFlow } from "./onboarding-flow";
 import type { Recommendation } from "@/lib/mock-data";
 
 const LEFT_TABS = [
@@ -22,6 +21,8 @@ const RIGHT_TABS = [
   { href: "/profile", label: "Profile", Icon: User },
 ];
 
+const SHELL_BYPASS = ["/sign-in", "/sign-up", "/onboarding"];
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -30,15 +31,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [showSplash, setShowSplash] = useState(true);
-  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Auth/onboarding routes render without the app shell
+  const isBypass = SHELL_BYPASS.some((p) => pathname.startsWith(p));
 
   const openRecommendSheet = useCallback(() => setSheetOpen(true), []);
-
-  useEffect(() => {
-    if (typeof window !== "undefined" && !localStorage.getItem("hasOnboarded")) {
-      setShowOnboarding(true);
-    }
-  }, []);
 
   useEffect(() => {
     if (!toast) return;
@@ -59,12 +56,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     router.push("/");
   }
 
-  function handleOnboardingComplete(newRecs: Recommendation[]) {
-    newRecs.forEach(addUserRec);
-    localStorage.setItem("hasOnboarded", "1");
-    setShowOnboarding(false);
-    setToast("You're all set. Start by asking your people something.");
-  }
 
   function renderTab({ href, label, Icon }: { href: string; label: string; Icon: React.ElementType }) {
     const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -83,13 +74,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  if (isBypass) {
+    return (
+      <UIContext.Provider value={{ openRecommendSheet }}>
+        {children}
+      </UIContext.Provider>
+    );
+  }
+
   return (
     <UIContext.Provider value={{ openRecommendSheet }}>
       <>
         {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
-        {showOnboarding && (
-          <OnboardingFlow onComplete={handleOnboardingComplete} />
-        )}
         <div className="min-h-screen bg-cream">
           <div className="relative mx-auto max-w-[430px] min-h-screen bg-cream flex flex-col">
 

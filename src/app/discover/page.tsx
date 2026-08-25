@@ -5,7 +5,6 @@ import { Search, ChevronRight, Users, TrendingUp, X, MapPin, ChevronDown, Heart,
 import {
   recommendations,
   users,
-  currentUser,
   avasDirectFriendIds,
   avaLocation,
   CITY_NEIGHBORHOODS,
@@ -14,6 +13,7 @@ import {
   ExternalResult,
   getMockExternalResults,
 } from "@/lib/mock-data";
+import { useCurrentUser } from "@/lib/auth-context";
 import { useUserRecs } from "@/lib/user-recs-context";
 import { useInteractions } from "@/lib/use-interactions";
 import { CardSheet } from "@/components/card-sheet";
@@ -346,6 +346,7 @@ function FlatResults({ recs, onCardClick, showFallback }: { recs: Recommendation
 // ─── page ─────────────────────────────────────────────────────────────────────
 
 export default function DiscoverPage() {
+  const currentUser = useCurrentUser();
   const { userRecs } = useUserRecs();
   const { interactions, toggle, addVouch, removeVouch, addVouchChain, addDisagreement } = useInteractions();
   const [query, setQuery] = useState("");

@@ -7,7 +7,8 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { currentUser, type Category, type Recommendation } from "@/lib/mock-data";
+import { type Category, type Recommendation } from "@/lib/mock-data";
+import { useCurrentUser } from "@/lib/auth-context";
 import { ONBOARDING_PLACES, getPlacesForCities } from "@/lib/onboarding-places";
 
 // ─── constants ────────────────────────────────────────────────────────────────
@@ -61,6 +62,7 @@ function ProgressDots({ step }: { step: Step }) {
 // ─── main component ───────────────────────────────────────────────────────────
 
 export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
+  const currentUser = useCurrentUser();
   const [step, setStep] = useState<Step>(1);
   const [selectedCities, setSelectedCities] = useState<Set<string>>(new Set());
   const [beenPlaces, setBeenPlaces] = useState<Set<string>>(new Set());

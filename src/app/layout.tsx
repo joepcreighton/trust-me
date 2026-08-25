@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, DM_Serif_Display } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/app-shell";
+import { AuthProvider } from "@/lib/auth-context";
 import { UserRecsProvider } from "@/lib/user-recs-context";
 import { UserProfileProvider } from "@/lib/user-profile-context";
 import { SettingsProvider } from "@/lib/settings-context";
@@ -40,13 +41,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${inter.variable} ${dmSerif.variable}`}>
       <body>
-        <SettingsProvider>
-          <UserRecsProvider>
-            <UserProfileProvider>
-              <AppShell>{children}</AppShell>
-            </UserProfileProvider>
-          </UserRecsProvider>
-        </SettingsProvider>
+        <AuthProvider>
+          <SettingsProvider>
+            <UserRecsProvider>
+              <UserProfileProvider>
+                <AppShell>{children}</AppShell>
+              </UserProfileProvider>
+            </UserRecsProvider>
+          </SettingsProvider>
+        </AuthProvider>
       </body>
     </html>
   );

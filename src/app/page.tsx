@@ -6,12 +6,12 @@ import { ChevronRight } from "lucide-react";
 import {
   recommendations,
   users,
-  currentUser,
   mockAsks,
   Ask,
   Recommendation,
   Category,
 } from "@/lib/mock-data";
+import { useCurrentUser } from "@/lib/auth-context";
 import { useUserRecs } from "@/lib/user-recs-context";
 import { useInteractions } from "@/lib/use-interactions";
 import { RecommendationCard } from "@/components/recommendation-card";
@@ -39,6 +39,7 @@ function timeAgo(ts: string) {
 }
 
 function AskFeedCard({ ask }: { ask: Ask }) {
+  const currentUser = useCurrentUser();
   const asker = users.find((u) => u.id === ask.askerId) ?? currentUser;
   const catStyle = ask.category ? CATEGORY_STYLE[ask.category] : null;
 
@@ -91,6 +92,7 @@ type FeedItem =
 
 export default function HomePage() {
   const router = useRouter();
+  const currentUser = useCurrentUser();
   const { userRecs } = useUserRecs();
   const { interactions, toggle, addVouch, removeVouch, addVouchChain, addDisagreement } = useInteractions();
   const [userAsks, setUserAsks] = useState<Ask[]>([]);

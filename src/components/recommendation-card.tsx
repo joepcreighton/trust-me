@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { Heart, Handshake, MessageCircle, Bookmark, MapPin, ThumbsDown, Link2, Globe, Phone } from "lucide-react";
 import {
   Recommendation, User, Category,
-  users as allUsers, currentUser,
+  users as allUsers, avasDirectFriendIds,
 } from "@/lib/mock-data";
+import { useCurrentUser } from "@/lib/auth-context";
 import type { Disagreement } from "@/lib/use-interactions";
 import { cn } from "@/lib/utils";
 import { VouchAvatars } from "./vouch-avatars";
@@ -40,7 +41,7 @@ const categoryStyle: Record<Category, { bg: string; text: string }> = {
 };
 
 // Direct friends — used to filter which vouchers to show avatars for.
-const directFriendIds = new Set(currentUser.friends);
+const directFriendIds = avasDirectFriendIds;
 
 function timeAgo(timestamp: string): string {
   const diff = Date.now() - new Date(timestamp).getTime();
@@ -55,11 +56,12 @@ function timeAgo(timestamp: string): string {
 // ─── Chain display ─────────────────────────────────────────────────────────────
 
 function ChainDisplay({ chains }: { chains: string[][] }) {
+  const currentUser = useCurrentUser();
   const chain = chains[0];
   if (!chain || chain.length === 0) return null;
 
   const nodes = chain
-    .map((id) => (id === currentUser.id ? currentUser : allUsers.find((u) => u.id === id)))
+    .map((id) => (currentUser.id && id === currentUser.id ? currentUser : allUsers.find((u) => u.id === id)))
     .filter((u): u is User => u != null);
 
   const visible = nodes.slice(0, 3);
@@ -67,7 +69,7 @@ function ChainDisplay({ chains }: { chains: string[][] }) {
   const hasTrustedChain = chain.length >= 3;
 
   const nameText = visible
-    .map((u) => (u.id === currentUser.id ? "You" : u.name.split(" ")[0]))
+    .map((u) => (currentUser.id && u.id === currentUser.id ? "You" : u.name.split(" ")[0]))
     .join(" → ");
 
   return (

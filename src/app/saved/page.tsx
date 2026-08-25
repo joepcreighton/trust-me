@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { Bookmark, ChevronRight, Sparkles, HeartPulse, Home, Dumbbell, PawPrint, Circle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { recommendations, users, currentUser, Category, Recommendation } from "@/lib/mock-data";
+import { recommendations, users, Category, Recommendation } from "@/lib/mock-data";
+import { useCurrentUser } from "@/lib/auth-context";
 import { useUserRecs } from "@/lib/user-recs-context";
 import { useInteractions } from "@/lib/use-interactions";
 import { CardSheet } from "@/components/card-sheet";
@@ -82,6 +83,7 @@ function SavedItem({
 // ─── page ────────────────────────────────────────────────────────────────────
 
 export default function SavedPage() {
+  const currentUser = useCurrentUser();
   const { userRecs } = useUserRecs();
   const { interactions, toggle, addVouch, removeVouch, addVouchChain, addDisagreement } = useInteractions();
   const [selectedId, setSelectedId] = useState<string | null>(null);

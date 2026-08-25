@@ -19,7 +19,8 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { recommendations, currentUser, Category, Recommendation } from "@/lib/mock-data";
+import { recommendations, Category, Recommendation } from "@/lib/mock-data";
+import { useCurrentUser } from "@/lib/auth-context";
 
 // ─── types ──────────────────────────────────────────────────────────────────
 
@@ -118,6 +119,7 @@ interface RecommendSheetProps {
 }
 
 export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps) {
+  const currentUser = useCurrentUser();
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormState>({
     name: "",

@@ -7,9 +7,9 @@ import {
   providers,
   recommendations,
   users,
-  currentUser,
   Recommendation,
 } from "@/lib/mock-data";
+import { useCurrentUser } from "@/lib/auth-context";
 import { useUserRecs } from "@/lib/user-recs-context";
 import { useInteractions } from "@/lib/use-interactions";
 import { CardSheet } from "@/components/card-sheet";
@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 // ─── rec row ──────────────────────────────────────────────────────────────────
 
 function RecRow({ rec, onClick }: { rec: Recommendation; onClick: () => void }) {
+  const currentUser = useCurrentUser();
   const recommender = users.find((u) => u.id === rec.recommenderId) ?? currentUser;
 
   return (
@@ -48,6 +49,7 @@ function RecRow({ rec, onClick }: { rec: Recommendation; onClick: () => void }) 
 export default function ProviderPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const currentUser = useCurrentUser();
   const { userRecs } = useUserRecs();
   const { interactions, toggle, addVouch, removeVouch, addVouchChain, addDisagreement } = useInteractions();
   const [selectedId, setSelectedId] = useState<string | null>(null);

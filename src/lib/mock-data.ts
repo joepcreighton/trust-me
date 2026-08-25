@@ -48,19 +48,17 @@ export interface Recommendation {
 // Ava's mock location for map center and "Recs Nearby" filter
 export const avaLocation = { lat: 40.7128, lng: -74.006 };
 
-export const currentUser: User = {
-  id: "ava",
-  name: "Ava Chen",
-  username: "avachen",
-  avatar: "https://i.pravatar.cc/150?u=ava-chen",
-  bio: "I only share what I'd genuinely tell a close friend.",
-  cities: ["New York City", "San Diego", "Denver"],
-  gender: "woman",
-  friends: ["maya", "sarah", "katie", "priya", "zoe", "emma", "lily", "nadia"],
-};
-
 export const users: User[] = [
-  currentUser,
+  {
+    id: "ava",
+    name: "Ava Chen",
+    username: "avachen",
+    avatar: "https://i.pravatar.cc/150?u=ava-chen",
+    bio: "I only share what I'd genuinely tell a close friend.",
+    cities: ["New York City", "San Diego", "Denver"],
+    gender: "woman",
+    friends: ["maya", "sarah", "katie", "priya", "zoe", "emma", "lily", "nadia"],
+  },
   {
     id: "maya", name: "Maya Reyes", username: "mayar", avatar: "https://i.pravatar.cc/150?u=maya-reyes",
     cities: ["New York City", "Chicago"],
@@ -131,7 +129,9 @@ export const users: User[] = [
   },
 ];
 
-export const avasDirectFriendIds = new Set(currentUser.friends);
+export const avasDirectFriendIds = new Set([
+  "maya", "sarah", "katie", "priya", "zoe", "emma", "lily", "nadia",
+]);
 
 export const CITY_NEIGHBORHOODS: Record<string, string[]> = {
   "New York City": [

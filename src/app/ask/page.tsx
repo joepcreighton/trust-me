@@ -5,13 +5,13 @@ import { Send, ChevronRight, PlusCircle } from "lucide-react";
 import {
   recommendations,
   users,
-  currentUser,
   mockAsks,
   Category,
   Ask,
   AskReply,
   Recommendation,
 } from "@/lib/mock-data";
+import { useCurrentUser } from "@/lib/auth-context";
 import { useUserRecs } from "@/lib/user-recs-context";
 import { useInteractions } from "@/lib/use-interactions";
 import { useUI } from "@/lib/ui-context";
@@ -125,6 +125,7 @@ function AskCard({
   allRecs: Recommendation[];
   onRecClick: (rec: Recommendation) => void;
 }) {
+  const currentUser = useCurrentUser();
   const asker = users.find((u) => u.id === ask.askerId) ?? currentUser;
   const catStyle = ask.category ? CATEGORY_STYLE[ask.category] : null;
 
@@ -183,6 +184,7 @@ function AskCard({
 // ─── page ────────────────────────────────────────────────────────────────────
 
 export default function AskPage() {
+  const currentUser = useCurrentUser();
   const { userRecs } = useUserRecs();
   const { interactions, toggle, addVouch, removeVouch, addVouchChain, addDisagreement } = useInteractions();
   const { openRecommendSheet } = useUI();

@@ -19,13 +19,12 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { useUserProfile, type Gender } from "@/lib/user-profile-context";
-import { currentUser } from "@/lib/mock-data";
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
 const BIO_LIMIT = 150;
 
-const DEFAULT_AVATAR = currentUser.avatar;
+const DEFAULT_AVATAR = "https://i.pravatar.cc/150?u=placeholder";
 
 const AVAILABLE_CITIES = [
   "New York City", "Los Angeles", "Chicago", "Austin", "Denver",

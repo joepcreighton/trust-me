@@ -7,12 +7,12 @@ import type { LucideIcon } from "lucide-react";
 import {
   recommendations,
   users,
-  currentUser,
   mockAsks,
   Ask,
   Category,
   Recommendation,
 } from "@/lib/mock-data";
+import { useCurrentUser } from "@/lib/auth-context";
 import { useUserRecs } from "@/lib/user-recs-context";
 import { useUserProfile } from "@/lib/user-profile-context";
 import { useInteractions } from "@/lib/use-interactions";
@@ -194,6 +194,7 @@ function LookingForCard({ ask, allRecs }: { ask: Ask; allRecs: Recommendation[] 
 
 export default function ProfilePage() {
   const router = useRouter();
+  const currentUser = useCurrentUser();
   const [activeTab, setActiveTab] = useState<ProfileTab>("recs");
   const [userAsks, setUserAsks] = useState<Ask[]>([]);
   const [editOpen, setEditOpen] = useState(false);
@@ -215,10 +216,10 @@ export default function ProfilePage() {
 
   const allRecs = useMemo(() => [...userRecs, ...recommendations], [userRecs]);
 
-  // Ava's asks only (user-posted + any mock asks from Ava)
+  // Current user's asks only
   const avaAsks = useMemo(
-    () => [...userAsks, ...mockAsks].filter((a) => a.askerId === currentUser.id),
-    [userAsks]
+    () => [...userAsks, ...(currentUser.id ? mockAsks.filter((a) => a.askerId === currentUser.id) : [])],
+    [userAsks, currentUser.id]
   );
 
   // Summary card counts
@@ -266,8 +267,10 @@ export default function ProfilePage() {
           <div className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-sage border-2 border-white" />
         </div>
 
-        <h2 className="font-display text-2xl text-charcoal leading-tight">{currentUser.name}</h2>
-        <p className="text-sm text-muted mt-0.5">@{currentUser.username}</p>
+        <h2 className="font-display text-2xl text-charcoal leading-tight">
+          {currentUser.name || profile.bio || "Your profile"}
+        </h2>
+        <p className="text-sm text-muted mt-0.5">@{currentUser.username || "—"}</p>
 
         <button
           onClick={() => setEditOpen(true)}
@@ -296,7 +299,7 @@ export default function ProfilePage() {
             className="flex flex-col items-center gap-0.5 group"
           >
             <span className="font-display text-[1.5rem] text-charcoal leading-tight group-hover:text-sage transition-colors">
-              {currentUser.friends.length}
+              0
             </span>
             <span className="text-[11px] text-muted leading-tight">friends</span>
           </button>
