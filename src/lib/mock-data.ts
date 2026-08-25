@@ -542,13 +542,37 @@ export const providers: Provider[] = [
   },
 ];
 
-// ─── Smart Score helper ───────────────────────────────────────────────────────
-// Deterministic scores derived from rec ID — stable across renders, no DB needed.
+// ─── External search fallback ─────────────────────────────────────────────────
 
-export function getExternalScores(recId: string): { yelp: number; google: number; smart: number } {
-  const h = [...recId].reduce((a, c) => (a * 31 + c.charCodeAt(0)) & 0xffff, 0);
-  const yelp   = Math.round((3.8 + ((h         & 0x3ff) / 0x3ff) * 1.1) * 10) / 10;
-  const google = Math.round((4.1 + (((h >> 4)  & 0x3ff) / 0x3ff) * 0.8) * 10) / 10;
-  const smart  = Math.round((7.4 + (((h >> 2)  & 0x3ff) / 0x3ff) * 2.3) * 10) / 10;
-  return { yelp: Math.min(yelp, 4.9), google: Math.min(google, 5.0), smart: Math.min(smart, 9.7) };
+export interface ExternalResult {
+  id: string;
+  businessName: string;
+  category: Category;
+  city: string;
+  rating: number;
+  reviewCount: number;
+  source: "Yelp" | "Google";
+  viewUrl: string;
+  tasteMatch: number; // percentage 0–100
+}
+
+const EXTERNAL_RESULTS_POOL: ExternalResult[] = [
+  { id: "ext-1",  businessName: "Glow Skin Studio",         category: "Beauty",  city: "Los Angeles, CA",    rating: 4.7, reviewCount: 312, source: "Yelp",   viewUrl: "https://yelp.com/biz/glow-skin-studio-la",               tasteMatch: 82 },
+  { id: "ext-2",  businessName: "The Mindful Practice",      category: "Health",  city: "Brooklyn, NY",       rating: 4.9, reviewCount: 87,  source: "Google", viewUrl: "https://maps.google.com/?q=The+Mindful+Practice+Brooklyn", tasteMatch: 78 },
+  { id: "ext-3",  businessName: "Apex Strength Studio",      category: "Fitness", city: "Austin, TX",         rating: 4.6, reviewCount: 214, source: "Google", viewUrl: "https://maps.google.com/?q=Apex+Strength+Studio+Austin",  tasteMatch: 74 },
+  { id: "ext-4",  businessName: "Velvet Nail Lounge",        category: "Beauty",  city: "Miami, FL",          rating: 4.8, reviewCount: 503, source: "Yelp",   viewUrl: "https://yelp.com/biz/velvet-nail-lounge-miami",           tasteMatch: 71 },
+  { id: "ext-5",  businessName: "Pacific Family Dental",     category: "Health",  city: "San Diego, CA",      rating: 4.9, reviewCount: 156, source: "Google", viewUrl: "https://maps.google.com/?q=Pacific+Family+Dental+San+Diego", tasteMatch: 86 },
+  { id: "ext-6",  businessName: "Fresh Start Cleaning Co.",  category: "Home",    city: "Chicago, IL",        rating: 4.5, reviewCount: 289, source: "Yelp",   viewUrl: "https://yelp.com/biz/fresh-start-cleaning-chicago",       tasteMatch: 69 },
+  { id: "ext-7",  businessName: "Happy Paws Grooming",       category: "Pets",    city: "Denver, CO",         rating: 4.8, reviewCount: 178, source: "Google", viewUrl: "https://maps.google.com/?q=Happy+Paws+Grooming+Denver",   tasteMatch: 77 },
+  { id: "ext-8",  businessName: "Radiance Aesthetics",       category: "Beauty",  city: "Seattle, WA",        rating: 4.7, reviewCount: 421, source: "Yelp",   viewUrl: "https://yelp.com/biz/radiance-aesthetics-seattle",        tasteMatch: 83 },
+  { id: "ext-9",  businessName: "Urban Handyman Pro",        category: "Home",    city: "New York City, NY",  rating: 4.6, reviewCount: 334, source: "Google", viewUrl: "https://maps.google.com/?q=Urban+Handyman+Pro+New+York",  tasteMatch: 72 },
+  { id: "ext-10", businessName: "CoreFit Pilates",           category: "Fitness", city: "San Francisco, CA",  rating: 4.8, reviewCount: 267, source: "Yelp",   viewUrl: "https://yelp.com/biz/corefit-pilates-san-francisco",      tasteMatch: 80 },
+];
+
+// Deterministic shuffle so different queries surface different results.
+export function getMockExternalResults(query: string, count = 5): ExternalResult[] {
+  const h = [...query.toLowerCase()].reduce((a, c) => (a * 31 + c.charCodeAt(0)) & 0xffff, 0);
+  return [...EXTERNAL_RESULTS_POOL]
+    .sort((a, b) => ((h * 7 + a.id.charCodeAt(a.id.length - 1)) & 0xffff) - ((h * 7 + b.id.charCodeAt(b.id.length - 1)) & 0xffff))
+    .slice(0, count);
 }

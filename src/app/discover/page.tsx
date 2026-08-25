@@ -9,6 +9,8 @@ import {
   avasDirectFriendIds,
   Category,
   Recommendation,
+  ExternalResult,
+  getMockExternalResults,
 } from "@/lib/mock-data";
 import { useUserRecs } from "@/lib/user-recs-context";
 import { useInteractions } from "@/lib/use-interactions";
@@ -28,6 +30,11 @@ const CATEGORY_STYLE: Record<Category, { bg: string; text: string }> = {
   Fitness: { bg: "bg-purple-100", text: "text-purple-700" },
   Pets:    { bg: "bg-lime-100",   text: "text-lime-700" },
   Other:   { bg: "bg-gray-100",   text: "text-gray-600" },
+};
+
+const SOURCE_DOT: Record<"Yelp" | "Google", string> = {
+  Yelp:   "bg-[#d32323]",
+  Google: "bg-[#4285f4]",
 };
 
 type ActionFilter = "Reserve now" | "Open now";
@@ -141,10 +148,54 @@ function Section({
   );
 }
 
+// ─── external result card ─────────────────────────────────────────────────────
+
+function ExternalResultCard({ result }: { result: ExternalResult }) {
+  const style = CATEGORY_STYLE[result.category] ?? CATEGORY_STYLE.Other;
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-3.5">
+      <div className={cn("w-12 h-12 rounded-xl flex-shrink-0 flex items-center justify-center", style.bg)}>
+        <span className={cn("text-sm font-bold", style.text)}>{result.category[0]}</span>
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <p className="font-semibold text-charcoal text-sm leading-tight truncate">{result.businessName}</p>
+          <span className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-white border border-black/10 flex-shrink-0">
+            <span className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", SOURCE_DOT[result.source])} />
+            via {result.source}
+          </span>
+        </div>
+        <p className="text-xs text-muted mt-0.5 truncate">{result.city}</p>
+        <div className="flex items-center gap-2.5 mt-1 flex-wrap">
+          <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full", style.bg, style.text)}>
+            {result.category}
+          </span>
+          <span className="text-[11px] text-amber-500 font-medium">{result.rating} ★</span>
+          <span className="text-[11px] text-muted">({result.reviewCount})</span>
+          <span className="text-[11px] font-bold text-sage">{result.tasteMatch}% match</span>
+        </div>
+      </div>
+
+      <a
+        href={result.viewUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-[11px] font-semibold text-sage flex-shrink-0 hover:underline"
+        onClick={(e) => e.stopPropagation()}
+      >
+        View →
+      </a>
+    </div>
+  );
+}
+
 // ─── flat results ─────────────────────────────────────────────────────────────
 
-function FlatResults({ recs, onCardClick }: { recs: Recommendation[]; onCardClick: (id: string) => void }) {
+function FlatResults({ recs, onCardClick, showFallback }: { recs: Recommendation[]; onCardClick: (id: string) => void; showFallback?: boolean }) {
   if (recs.length === 0) {
+    if (showFallback) return null;
     return (
       <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
         <p className="text-muted text-sm">No results found.</p>
@@ -205,6 +256,12 @@ export default function DiscoverPage() {
       );
     });
   }, [allRecs, query, activeCategory, activeFilters]);
+
+  const hasNetworkResults = useMemo(
+    () => filteredRecs.some((r) => avasDirectFriendIds.has(r.recommenderId)),
+    [filteredRecs]
+  );
+  const showFallback = query.trim().length > 0 && !hasNetworkResults;
 
   const fromYourPeople = useMemo(
     () => allRecs.filter((r) => avasDirectFriendIds.has(r.recommenderId))
@@ -291,7 +348,28 @@ export default function DiscoverPage() {
 
         {/* Content */}
         {isFiltered ? (
-          <FlatResults recs={filteredRecs} onCardClick={setSelectedId} />
+          <>
+            <FlatResults recs={filteredRecs} onCardClick={setSelectedId} showFallback={showFallback} />
+
+            {showFallback && (
+              <div className="mb-5 mt-2">
+                <div className="flex items-center gap-2 px-4 mb-2">
+                  <h3 className="text-[13px] font-bold tracking-wide uppercase text-muted">You might also like</h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/6 text-muted/70 ml-auto">
+                    via Yelp &amp; Google
+                  </span>
+                </div>
+                <div className="mx-4 bg-white rounded-2xl shadow-sm shadow-black/5 divide-y divide-black/5 overflow-hidden">
+                  {getMockExternalResults(query, 5).map((result) => (
+                    <ExternalResultCard key={result.id} result={result} />
+                  ))}
+                </div>
+                <p className="text-[10px] text-muted/50 px-5 mt-2">
+                  These results come from Yelp and Google and haven&apos;t been vetted by your network.
+                </p>
+              </div>
+            )}
+          </>
         ) : (
           <>
             <Section icon={Users} label="From your people" badge="Most trusted" badgeStyle="bg-sage text-white" recs={fromYourPeople} isTrusted onCardClick={setSelectedId} />
