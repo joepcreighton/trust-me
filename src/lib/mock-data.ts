@@ -23,7 +23,7 @@ export interface Recommendation {
   serviceProvider?: string;
   providerId?: string;
   category: Category;
-  subCategory: SubCategory;
+  subCategory: string;
   city: string;
   neighborhood?: string;
   lat?: number;

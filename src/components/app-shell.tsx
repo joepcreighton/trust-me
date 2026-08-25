@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 import { useUserRecs } from "@/lib/user-recs-context";
 import { UIContext } from "@/lib/ui-context";
 import { RecommendSheet } from "./recommend-sheet";
+import { SplashScreen } from "./splash-screen";
+import { OnboardingFlow } from "./onboarding-flow";
 import type { Recommendation } from "@/lib/mock-data";
 
 const LEFT_TABS = [
@@ -27,8 +29,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [showSplash, setShowSplash] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const openRecommendSheet = useCallback(() => setSheetOpen(true), []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && !localStorage.getItem("hasOnboarded")) {
+      setShowOnboarding(true);
+    }
+  }, []);
 
   useEffect(() => {
     if (!toast) return;
@@ -47,6 +57,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setSheetOpen(false);
     setToast("Posted!");
     router.push("/");
+  }
+
+  function handleOnboardingComplete(newRecs: Recommendation[]) {
+    newRecs.forEach(addUserRec);
+    localStorage.setItem("hasOnboarded", "1");
+    setShowOnboarding(false);
+    setToast("You're all set. Start by asking your people something.");
   }
 
   function renderTab({ href, label, Icon }: { href: string; label: string; Icon: React.ElementType }) {
@@ -69,6 +86,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <UIContext.Provider value={{ openRecommendSheet }}>
       <>
+        {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
+        {showOnboarding && (
+          <OnboardingFlow onComplete={handleOnboardingComplete} />
+        )}
         <div className="min-h-screen bg-cream">
           <div className="relative mx-auto max-w-[430px] min-h-screen bg-cream flex flex-col">
 
@@ -161,15 +182,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div
           className={cn(
             "fixed top-20 left-1/2 -translate-x-1/2 z-[60]",
-            "flex items-center gap-2 px-4 py-2.5 rounded-full",
-            "bg-charcoal text-white text-sm font-medium shadow-lg",
+            "flex items-center gap-2 px-4 py-2.5 rounded-2xl max-w-[340px]",
+            "bg-charcoal text-white text-sm font-medium shadow-lg text-center",
             "transition-all duration-300",
             toast
               ? "opacity-100 translate-y-0"
               : "opacity-0 -translate-y-2 pointer-events-none"
           )}
         >
-          <Check size={15} strokeWidth={2.5} />
+          <Check size={15} strokeWidth={2.5} className="flex-shrink-0" />
           {toast}
         </div>
       </>
