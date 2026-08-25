@@ -16,11 +16,13 @@ import {
   Circle,
   Globe,
   Phone,
+  Loader2,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { recommendations, Category, Recommendation } from "@/lib/mock-data";
+import { Category, Recommendation } from "@/lib/mock-data";
 import { useCurrentUser } from "@/lib/auth-context";
+import { createClient } from "@/lib/supabase/client";
 
 // ─── types ──────────────────────────────────────────────────────────────────
 
@@ -90,18 +92,20 @@ const CATEGORY_PHOTOS: Record<string, string[]> = {
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-function getBusinessSuggestions(query: string): string[] {
+async function getBusinessSuggestions(query: string): Promise<string[]> {
   if (query.length < 2) return [];
-  const q = query.toLowerCase();
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("recommendations")
+    .select("business_name")
+    .ilike("business_name", `%${query}%`)
+    .limit(5);
   const seen = new Set<string>();
-  return recommendations
-    .map((r) => r.businessName)
-    .filter((name) => {
-      if (seen.has(name)) return false;
-      seen.add(name);
-      return name.toLowerCase().includes(q);
-    })
-    .slice(0, 5);
+  return (data ?? []).map((r) => r.business_name).filter((name) => {
+    if (seen.has(name)) return false;
+    seen.add(name);
+    return true;
+  });
 }
 
 function pickRandomPhoto(category: FormCategory | null): string {
@@ -132,6 +136,7 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
     phone: "",
   });
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [posting, setPosting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Reset form whenever sheet opens
@@ -158,7 +163,7 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
 
   function handleNameChange(val: string) {
     setForm((f) => ({ ...f, name: val }));
-    setSuggestions(getBusinessSuggestions(val));
+    getBusinessSuggestions(val).then(setSuggestions);
   }
 
   function pickSuggestion(name: string) {
@@ -189,29 +194,51 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
     }
   }
 
-  function handlePost() {
-    const cat: Category =
-      form.category === "Other" || !form.category ? "Beauty" : form.category;
+  async function handlePost() {
+    if (!currentUser.id || posting) return;
+    setPosting(true);
 
-    const rec: Recommendation = {
-      id: `user-${Date.now()}`,
-      recommenderId: currentUser.id,
-      businessName: form.name.trim(),
-      category: cat,
-      subCategory: "Hair", // sensible default; full subcat picker is future scope
-      city: form.city || "Location TBD",
-      serviceProvider: form.provider.trim() || undefined,
-      blurb: form.why.trim(),
-      photo: form.photo ?? undefined,
-      website: form.website.trim() || undefined,
-      phone: form.phone.trim() || undefined,
-      timestamp: new Date().toISOString(),
-      likesCount: 0,
-      vouches: [],
-      commentCount: 0,
-    };
+    const supabase = createClient();
+    const cat = (form.category ?? "other").toLowerCase();
 
-    onPost(rec);
+    const { data, error } = await supabase
+      .from("recommendations")
+      .insert({
+        user_id: currentUser.id,
+        business_name: form.name.trim(),
+        service_provider: form.provider.trim() || null,
+        category: cat,
+        blurb: form.why.trim(),
+        photo_url: form.photo || null,
+        city: form.city || null,
+        website: form.website.trim() || null,
+        phone: form.phone.trim() || null,
+      })
+      .select()
+      .single();
+
+    setPosting(false);
+
+    if (!error && data) {
+      const rec: Recommendation = {
+        id: data.id,
+        recommenderId: currentUser.id,
+        businessName: data.business_name,
+        serviceProvider: data.service_provider ?? undefined,
+        category: (data.category.charAt(0).toUpperCase() + data.category.slice(1)) as Category,
+        subCategory: "Other",
+        city: data.city ?? "",
+        blurb: data.blurb,
+        photo: data.photo_url ?? undefined,
+        website: data.website ?? undefined,
+        phone: data.phone ?? undefined,
+        timestamp: data.created_at,
+        likesCount: 0,
+        vouches: [],
+        commentCount: 0,
+      };
+      onPost(rec);
+    }
   }
 
   const progress = (step / 4) * 100;
@@ -328,16 +355,18 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
         <div className="px-5 pb-8 pt-3 flex-shrink-0 border-t border-black/5">
           <button
             onClick={handleNext}
-            disabled={!canAdvance()}
+            disabled={!canAdvance() || posting}
             className={cn(
               "w-full flex items-center justify-center gap-2",
               "h-12 rounded-full font-semibold text-sm transition-all",
-              canAdvance()
+              canAdvance() && !posting
                 ? "bg-sage text-white shadow-sm shadow-sage/30 active:scale-[0.98]"
                 : "bg-black/8 text-muted cursor-not-allowed"
             )}
           >
-            {step < 4 ? (
+            {posting ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : step < 4 ? (
               <>
                 Next <ArrowRight size={16} />
               </>

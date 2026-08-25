@@ -1,23 +1,21 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Search, ChevronRight, Users, TrendingUp, X, MapPin, ChevronDown, Heart, Handshake, Star } from "lucide-react";
 import {
-  recommendations,
-  users,
-  avasDirectFriendIds,
-  avaLocation,
   CITY_NEIGHBORHOODS,
   Category,
   Recommendation,
   ExternalResult,
   getMockExternalResults,
 } from "@/lib/mock-data";
+import type { DbRecommendation } from "@/lib/db-types";
 import { useCurrentUser } from "@/lib/auth-context";
-import { useUserRecs } from "@/lib/user-recs-context";
 import { useInteractions } from "@/lib/use-interactions";
 import { CardSheet } from "@/components/card-sheet";
 import { LocationSheet, LocationFilter } from "@/components/location-sheet";
+import { SkeletonList } from "@/components/skeleton-card";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 // ─── constants ────────────────────────────────────────────────────────────────
@@ -67,14 +65,37 @@ function locationPillLabel(filter: LocationFilter): string {
 
 // ─── recs for you ────────────────────────────────────────────────────────────
 
-const RECS_FOR_YOU_DATA: { recId: string; reason: string }[] = [
-  { recId: "r3",  reason: "Because you save beauty recs" },
-  { recId: "r5",  reason: "Trending with wellness fans in your circle" },
-  { recId: "r1",  reason: "Top color studio in Brooklyn — where you spend time" },
-  { recId: "r19", reason: "People who love yoga are loving this" },
-  { recId: "r21", reason: "Highest-vouched pet care near Park Slope" },
-  { recId: "r10", reason: "Popular with people who share your taste" },
-];
+const DEFAULT_AVATAR = "https://i.pravatar.cc/150?u=placeholder";
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function mapDbRec(row: DbRecommendation): Recommendation & { _recommenderName: string; _recommenderAvatar: string } {
+  return {
+    id: row.id,
+    recommenderId: row.user_id,
+    businessName: row.business_name,
+    serviceProvider: row.service_provider ?? undefined,
+    category: capitalize(row.category) as Category,
+    subCategory: row.subcategory ?? "Other",
+    city: row.city ?? "",
+    neighborhood: row.neighborhood ?? undefined,
+    lat: row.latitude ?? undefined,
+    lng: row.longitude ?? undefined,
+    blurb: row.blurb,
+    photo: row.photo_url ?? undefined,
+    website: row.website ?? undefined,
+    phone: row.phone ?? undefined,
+    timestamp: row.created_at,
+    likesCount: row.likes?.length ?? 0,
+    vouches: row.vouches?.map((v) => v.user_id) ?? [],
+    commentCount: 0,
+    reservations: row.takes_appointments,
+    _recommenderName: row.recommender?.full_name ?? "Someone",
+    _recommenderAvatar: row.recommender?.avatar_url ?? DEFAULT_AVATAR,
+  };
+}
 
 function RecsForYouCard({
   rec,
@@ -164,14 +185,15 @@ function RecsForYouSection({
 
 function DiscoverCard({
   rec,
+  recommenderName,
   isTrusted,
   onClick,
 }: {
   rec: Recommendation;
+  recommenderName?: string;
   isTrusted?: boolean;
   onClick: () => void;
 }) {
-  const recommender = users.find((u) => u.id === rec.recommenderId);
   const style = CATEGORY_STYLE[rec.category as Category] ?? CATEGORY_STYLE.Other;
 
   return (
@@ -196,7 +218,7 @@ function DiscoverCard({
           {rec.businessName}
         </p>
         <p className="text-xs text-muted mt-0.5 truncate">
-          by {recommender?.name.split(" ")[0]} · {rec.city}
+          by {(recommenderName ?? "Someone").split(" ")[0]} · {rec.city}
         </p>
         <div className="flex items-center gap-3 mt-1">
           <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-full", style.bg, style.text)}>
@@ -222,6 +244,8 @@ function DiscoverCard({
 
 // ─── section ──────────────────────────────────────────────────────────────────
 
+type RichRec = Recommendation & { _recommenderName: string; _recommenderAvatar: string };
+
 function Section({
   icon: Icon,
   label,
@@ -235,10 +259,11 @@ function Section({
   label: string;
   badge?: string;
   badgeStyle?: string;
-  recs: Recommendation[];
+  recs: RichRec[];
   isTrusted?: boolean;
   onCardClick: (id: string) => void;
 }) {
+  if (recs.length === 0) return null;
   return (
     <div className="mb-5">
       <div className="flex items-center gap-2 px-4 mb-2">
@@ -260,7 +285,7 @@ function Section({
           : "bg-white divide-black/5"
       )}>
         {recs.map((rec) => (
-          <DiscoverCard key={rec.id} rec={rec} isTrusted={isTrusted} onClick={() => onCardClick(rec.id)} />
+          <DiscoverCard key={rec.id} rec={rec} recommenderName={rec._recommenderName} isTrusted={isTrusted} onClick={() => onCardClick(rec.id)} />
         ))}
       </div>
 
@@ -319,7 +344,7 @@ function ExternalResultCard({ result }: { result: ExternalResult }) {
 
 // ─── flat results ─────────────────────────────────────────────────────────────
 
-function FlatResults({ recs, onCardClick, showFallback }: { recs: Recommendation[]; onCardClick: (id: string) => void; showFallback?: boolean }) {
+function FlatResults({ recs, onCardClick, showFallback }: { recs: RichRec[]; onCardClick: (id: string) => void; showFallback?: boolean }) {
   if (recs.length === 0) {
     if (showFallback) return null;
     return (
@@ -336,7 +361,7 @@ function FlatResults({ recs, onCardClick, showFallback }: { recs: Recommendation
       </p>
       <div className="mx-4 bg-white rounded-2xl shadow-sm shadow-black/5 divide-y divide-black/5 overflow-hidden">
         {recs.map((rec) => (
-          <DiscoverCard key={rec.id} rec={rec} onClick={() => onCardClick(rec.id)} />
+          <DiscoverCard key={rec.id} rec={rec} recommenderName={rec._recommenderName} onClick={() => onCardClick(rec.id)} />
         ))}
       </div>
     </div>
@@ -347,7 +372,6 @@ function FlatResults({ recs, onCardClick, showFallback }: { recs: Recommendation
 
 export default function DiscoverPage() {
   const currentUser = useCurrentUser();
-  const { userRecs } = useUserRecs();
   const { interactions, toggle, addVouch, removeVouch, addVouchChain, addDisagreement } = useInteractions();
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<Category | "All">("All");
@@ -356,8 +380,52 @@ export default function DiscoverPage() {
   const [locationSheetOpen, setLocationSheetOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const allRecs = useMemo(() => [...userRecs, ...recommendations], [userRecs]);
-  const friends = users.filter((u) => u.id !== currentUser.id);
+  const [allRecs, setAllRecs] = useState<RichRec[]>([]);
+  const [friendIds, setFriendIds] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    async function loadData() {
+      const [recRes, friendRes] = await Promise.all([
+        supabase
+          .from("recommendations")
+          .select(`
+            *,
+            recommender:users!user_id(id, handle, full_name, avatar_url),
+            vouches(user_id),
+            likes(user_id)
+          `)
+          .order("created_at", { ascending: false })
+          .limit(100),
+        currentUser.id
+          ? supabase
+              .from("friendships")
+              .select("user_a, user_b")
+              .eq("status", "accepted")
+              .or(`user_a.eq.${currentUser.id},user_b.eq.${currentUser.id}`)
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      if (recRes.data) {
+        setAllRecs((recRes.data as DbRecommendation[]).map(mapDbRec));
+      }
+
+      if (friendRes.data) {
+        const ids = new Set(
+          (friendRes.data as { user_a: string; user_b: string }[]).map((row) =>
+            row.user_a === currentUser.id ? row.user_b : row.user_a
+          )
+        );
+        setFriendIds(ids);
+      }
+
+      setLoading(false);
+    }
+
+    if (currentUser.id !== "") loadData();
+  }, [currentUser.id]);
 
   function toggleFilter(f: ActionFilter) {
     setActiveFilters((prev) => {
@@ -378,7 +446,6 @@ export default function DiscoverPage() {
     return allRecs.filter((r) => {
       if (activeCategory !== "All" && r.category !== activeCategory) return false;
 
-      // Location filter
       if (locationFilter.type === "city") {
         const nbs = CITY_NEIGHBORHOODS[locationFilter.city] ?? [];
         if (!nbs.includes(r.neighborhood ?? "")) return false;
@@ -389,63 +456,50 @@ export default function DiscoverPage() {
         if (!r.city.toLowerCase().includes(lq) && !(r.neighborhood?.toLowerCase().includes(lq) ?? false)) return false;
       }
 
-      // Action filters
       if (activeFilters.has("Recs Nearby")) {
-        if (r.lat == null || r.lng == null || distanceMiles(avaLocation.lat, avaLocation.lng, r.lat, r.lng) > 5) return false;
+        if (r.lat == null || r.lng == null) return false;
       }
-      if (activeFilters.has("Open now") && !r.openNow) return false;
       if (activeFilters.has("Take appointments") && !r.reservations) return false;
 
       if (!q) return true;
-      const recommender = users.find((u) => u.id === r.recommenderId);
       return (
         r.businessName.toLowerCase().includes(q) ||
         r.city.toLowerCase().includes(q) ||
         r.blurb.toLowerCase().includes(q) ||
-        recommender?.name.toLowerCase().includes(q)
+        r._recommenderName.toLowerCase().includes(q)
       );
     });
   }, [allRecs, query, activeCategory, activeFilters, locationFilter]);
 
-  const hasNetworkResults = useMemo(
-    () => filteredRecs.some((r) => avasDirectFriendIds.has(r.recommenderId)),
-    [filteredRecs]
-  );
-  const showFallback = query.trim().length > 0 && !hasNetworkResults;
+  const showFallback = query.trim().length > 0 && filteredRecs.length === 0;
 
   const fromYourPeople = useMemo(
-    () => allRecs.filter((r) => avasDirectFriendIds.has(r.recommenderId))
-      .sort((a, b) => b.vouches.length - a.vouches.length).slice(0, 3),
-    [allRecs]
-  );
-
-  const friendsOfFriends = useMemo(
-    () => allRecs.filter((r) => !avasDirectFriendIds.has(r.recommenderId) && r.recommenderId !== currentUser.id)
-      .sort((a, b) => b.likesCount - a.likesCount).slice(0, 2),
-    [allRecs]
+    () => allRecs.filter((r) => friendIds.has(r.recommenderId))
+      .sort((a, b) => b.vouches.length - a.vouches.length).slice(0, 5),
+    [allRecs, friendIds]
   );
 
   const popularNearby = useMemo(
     () => [...allRecs].sort((a, b) =>
       (b.likesCount + b.vouches.length * 2) - (a.likesCount + a.vouches.length * 2)
-    ).slice(0, 3),
+    ).slice(0, 5),
     [allRecs]
   );
 
-  const recsForYou = useMemo(() =>
-    RECS_FOR_YOU_DATA
-      .map(({ recId, reason }) => {
-        const rec = allRecs.find((r) => r.id === recId);
-        return rec ? { rec, reason } : null;
-      })
-      .filter((item): item is { rec: Recommendation; reason: string } => item !== null),
-    [allRecs]
+  const allOthers = useMemo(
+    () => allRecs.filter((r) => !friendIds.has(r.recommenderId) && r.recommenderId !== currentUser.id)
+      .sort((a, b) => b.likesCount - a.likesCount).slice(0, 5),
+    [allRecs, friendIds, currentUser.id]
   );
 
-  const selectedRec = selectedId ? allRecs.find((r) => r.id === selectedId) ?? null : null;
+  const selectedRec = selectedId ? (allRecs.find((r) => r.id === selectedId) ?? null) : null;
   const selectedRecommender = selectedRec
-    ? (users.find((u) => u.id === selectedRec.recommenderId) ?? currentUser)
-    : currentUser;
+    ? { id: selectedRec.recommenderId, name: selectedRec._recommenderName, username: "unknown", avatar: selectedRec._recommenderAvatar, friends: [] as [] }
+    : { id: "", name: "", username: "", avatar: DEFAULT_AVATAR, friends: [] as [] };
+
+  const friends = allRecs
+    .map((r) => ({ id: r.recommenderId, name: r._recommenderName, username: "unknown", avatar: r._recommenderAvatar, friends: [] as [] }))
+    .filter((u, i, arr) => u.id && u.id !== currentUser.id && arr.findIndex((x) => x.id === u.id) === i);
 
   return (
     <>
@@ -488,9 +542,8 @@ export default function DiscoverPage() {
           ))}
         </div>
 
-        {/* Filter pills: City + action filters */}
+        {/* Filter pills */}
         <div className="flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar mb-4">
-          {/* Location pill */}
           <button
             onClick={() => setLocationSheetOpen(true)}
             className={cn(
@@ -505,7 +558,6 @@ export default function DiscoverPage() {
             <ChevronDown size={10} />
           </button>
 
-          {/* Action filter pills */}
           {ACTION_FILTERS.map((f) => (
             <button
               key={f}
@@ -523,7 +575,9 @@ export default function DiscoverPage() {
         </div>
 
         {/* Content */}
-        {isFiltered ? (
+        {loading ? (
+          <SkeletonList count={3} />
+        ) : isFiltered ? (
           <>
             <FlatResults recs={filteredRecs} onCardClick={setSelectedId} showFallback={showFallback} />
 
@@ -546,12 +600,16 @@ export default function DiscoverPage() {
               </div>
             )}
           </>
+        ) : allRecs.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 px-8 text-center">
+            <p className="text-sm text-muted">No recommendations yet.</p>
+            <p className="text-xs text-muted/60 mt-1">Be the first to share one!</p>
+          </div>
         ) : (
           <>
-            <RecsForYouSection items={recsForYou} onCardClick={setSelectedId} />
             <Section icon={Users} label="From your people" badge="Most trusted" badgeStyle="bg-sage text-white" recs={fromYourPeople} isTrusted onCardClick={setSelectedId} />
-            <Section icon={Users} label="Friends of friends" recs={friendsOfFriends} onCardClick={setSelectedId} />
-            <Section icon={TrendingUp} label="Popular in your area" recs={popularNearby} onCardClick={setSelectedId} />
+            <Section icon={Users} label="From the network" recs={allOthers} onCardClick={setSelectedId} />
+            <Section icon={TrendingUp} label="Most loved" recs={popularNearby} onCardClick={setSelectedId} />
           </>
         )}
       </div>
@@ -570,7 +628,7 @@ export default function DiscoverPage() {
         onVouch={(chain) => { if (!selectedId) return; addVouch(selectedId); if (chain) addVouchChain(selectedId, chain); }}
         onUnvouch={() => selectedId && removeVouch(selectedId)}
         onDisagree={(comment) => selectedId && addDisagreement(selectedId, comment)}
-        vouchChains={selectedId ? (interactions.vouchChains[selectedId] ?? []) : []}
+        vouchChains={[]}
         disagreements={selectedId ? (interactions.disagreements[selectedId] ?? []) : []}
       />
 

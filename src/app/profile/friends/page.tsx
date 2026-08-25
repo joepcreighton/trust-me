@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Search, MapPin, Users } from "lucide-react";
+import { ArrowLeft, Search, MapPin, Users, Bell } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 interface Friend {
@@ -17,6 +17,7 @@ export default function FriendsPage() {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [friends, setFriends] = useState<Friend[]>([]);
+  const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,6 +30,15 @@ export default function FriendsPage() {
         .select("user_a, user_b")
         .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
         .eq("status", "accepted");
+
+      // Count pending incoming requests
+      const { count } = await supabase
+        .from("friendships")
+        .select("id", { count: "exact", head: true })
+        .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
+        .eq("status", "pending")
+        .neq("requested_by", user.id);
+      setPendingCount(count ?? 0);
 
       if (!rows || rows.length === 0) { setLoading(false); return; }
 
@@ -72,6 +82,16 @@ export default function FriendsPage() {
         <h1 className="font-semibold text-charcoal text-base absolute left-1/2 -translate-x-1/2">
           Friends{friends.length > 0 ? ` · ${friends.length}` : ""}
         </h1>
+        <button
+          onClick={() => router.push("/profile/friends/requests")}
+          className="ml-auto relative p-2 text-muted hover:text-charcoal transition-colors"
+          aria-label="Friend requests"
+        >
+          <Bell size={18} strokeWidth={1.75} />
+          {pendingCount > 0 && (
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-sage rounded-full" />
+          )}
+        </button>
       </div>
 
       {/* Search */}

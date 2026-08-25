@@ -1,13 +1,43 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
-import { recommendations, users, Category, Recommendation } from "@/lib/mock-data";
+import type { Category, Recommendation } from "@/lib/mock-data";
+import type { DbRecommendation } from "@/lib/db-types";
 import { useCurrentUser } from "@/lib/auth-context";
 import { useUserRecs } from "@/lib/user-recs-context";
 import { useInteractions } from "@/lib/use-interactions";
 import { CardSheet } from "@/components/card-sheet";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+
+const DEFAULT_AVATAR = "https://i.pravatar.cc/150?u=placeholder";
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function mapDbRec(row: DbRecommendation & { recommender?: { id: string; handle: string; full_name: string; avatar_url: string | null } | null }): Recommendation & { _recommenderName: string; _recommenderAvatar: string } {
+  return {
+    id: row.id,
+    recommenderId: row.user_id,
+    businessName: row.business_name,
+    category: capitalize(row.category) as Category,
+    subCategory: row.subcategory ?? "Other",
+    city: row.city ?? "",
+    neighborhood: row.neighborhood ?? undefined,
+    lat: row.latitude ?? undefined,
+    lng: row.longitude ?? undefined,
+    blurb: row.blurb,
+    photo: row.photo_url ?? undefined,
+    timestamp: row.created_at,
+    likesCount: row.likes?.length ?? 0,
+    vouches: row.vouches?.map((v) => v.user_id) ?? [],
+    commentCount: 0,
+    _recommenderName: row.recommender?.full_name ?? "Someone",
+    _recommenderAvatar: row.recommender?.avatar_url ?? DEFAULT_AVATAR,
+  };
+}
 
 const MapView = dynamic(() => import("@/components/map-view"), { ssr: false });
 
@@ -23,6 +53,8 @@ const ACTION_FILTERS: ActionFilter[] = ["Reserve now", "Open now"];
 
 // ─── page ─────────────────────────────────────────────────────────────────────
 
+type RichRec = Recommendation & { _recommenderName: string; _recommenderAvatar: string };
+
 export default function ExplorePage() {
   const currentUser = useCurrentUser();
   const { userRecs } = useUserRecs();
@@ -30,17 +62,30 @@ export default function ExplorePage() {
   const [activeCategory, setActiveCategory] = useState<Category | "All">("All");
   const [activeFilters, setActiveFilters] = useState<Set<ActionFilter>>(new Set());
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [dbRecs, setDbRecs] = useState<RichRec[]>([]);
 
-  const allRecs = useMemo(() => [...userRecs, ...recommendations], [userRecs]);
-  const friends = users.filter((u) => u.id !== currentUser.id);
+  useEffect(() => {
+    const supabase = createClient();
+    supabase
+      .from("recommendations")
+      .select(`*, recommender:users!user_id(id, handle, full_name, avatar_url), vouches(user_id), likes(user_id)`)
+      .order("created_at", { ascending: false })
+      .limit(100)
+      .then(({ data }) => {
+        if (data) setDbRecs((data as (DbRecommendation & { recommender?: { id: string; handle: string; full_name: string; avatar_url: string | null } | null })[]).map(mapDbRec));
+      });
+  }, []);
 
-  const vouchChainCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const [id, chains] of Object.entries(interactions.vouchChains)) {
-      counts[id] = chains.length;
-    }
-    return counts;
-  }, [interactions.vouchChains]);
+  const allRecs = useMemo(() => {
+    const mapped = userRecs.map((r) => ({ ...r, _recommenderName: currentUser.name || "You", _recommenderAvatar: currentUser.avatar }));
+    return [...mapped, ...dbRecs.filter((r) => r.recommenderId !== currentUser.id)];
+  }, [userRecs, dbRecs, currentUser]);
+
+  const friends = useMemo(
+    () => dbRecs.map((r) => ({ id: r.recommenderId, name: r._recommenderName, username: "unknown", avatar: r._recommenderAvatar, friends: [] as string[] }))
+      .filter((u, i, arr) => u.id && u.id !== currentUser.id && arr.findIndex((x) => x.id === u.id) === i),
+    [dbRecs, currentUser.id]
+  );
 
   function toggleFilter(f: ActionFilter) {
     setActiveFilters((prev) => {
@@ -50,19 +95,18 @@ export default function ExplorePage() {
     });
   }
 
-  const filteredRecs = useMemo<Recommendation[]>(() => {
+  const filteredRecs = useMemo<RichRec[]>(() => {
     return allRecs.filter((r) => {
       if (activeCategory !== "All" && r.category !== activeCategory) return false;
       if (activeFilters.has("Reserve now") && !r.reservations) return false;
-      if (activeFilters.has("Open now") && !r.openNow) return false;
       return r.lat != null && r.lng != null;
     });
   }, [allRecs, activeCategory, activeFilters]);
 
   const selectedRec = selectedId ? allRecs.find((r) => r.id === selectedId) ?? null : null;
   const selectedRecommender = selectedRec
-    ? (users.find((u) => u.id === selectedRec.recommenderId) ?? currentUser)
-    : currentUser;
+    ? { id: selectedRec.recommenderId, name: selectedRec._recommenderName, username: "unknown", avatar: selectedRec._recommenderAvatar, friends: [] as string[] }
+    : { id: "", name: "", username: "", avatar: DEFAULT_AVATAR, friends: [] as string[] };
 
   return (
     <>
@@ -112,7 +156,7 @@ export default function ExplorePage() {
         {/* Map */}
         <MapView
           recs={filteredRecs}
-          vouchChainCounts={vouchChainCounts}
+          vouchChainCounts={{}}
           onRecClick={setSelectedId}
           onSwitchToList={() => {}}
         />
@@ -132,7 +176,7 @@ export default function ExplorePage() {
         onVouch={(chain) => { if (!selectedId) return; addVouch(selectedId); if (chain) addVouchChain(selectedId, chain); }}
         onUnvouch={() => selectedId && removeVouch(selectedId)}
         onDisagree={(comment) => selectedId && addDisagreement(selectedId, comment)}
-        vouchChains={selectedId ? (interactions.vouchChains[selectedId] ?? []) : []}
+        vouchChains={[]}
         disagreements={selectedId ? (interactions.disagreements[selectedId] ?? []) : []}
       />
     </>

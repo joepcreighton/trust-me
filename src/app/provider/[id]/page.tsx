@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, BadgeCheck, MapPin, ChevronRight } from "lucide-react";
 import {
   providers,
-  recommendations,
   users,
   Recommendation,
 } from "@/lib/mock-data";
@@ -56,7 +55,7 @@ export default function ProviderPage() {
 
   const provider = providers.find((p) => p.id === id);
   const friends = users.filter((u) => u.id !== currentUser.id);
-  const allRecs = useMemo(() => [...userRecs, ...recommendations], [userRecs]);
+  const allRecs = useMemo(() => [...userRecs], [userRecs]);
 
   const providerRecs = useMemo(
     () => allRecs.filter((r) => r.providerId === id),
@@ -190,7 +189,7 @@ export default function ProviderPage() {
         }}
         onUnvouch={() => selectedId && removeVouch(selectedId)}
         onDisagree={(comment) => selectedId && addDisagreement(selectedId, comment)}
-        vouchChains={selectedId ? (interactions.vouchChains[selectedId] ?? []) : []}
+        vouchChains={[]}
         disagreements={selectedId ? (interactions.disagreements[selectedId] ?? []) : []}
       />
     </>

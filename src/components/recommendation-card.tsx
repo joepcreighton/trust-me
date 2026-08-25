@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Heart, Handshake, MessageCircle, Bookmark, MapPin, ThumbsDown, Link2, Globe, Phone } from "lucide-react";
 import {
   Recommendation, User, Category,
-  users as allUsers, avasDirectFriendIds,
+  users as allUsers,
 } from "@/lib/mock-data";
 import { useCurrentUser } from "@/lib/auth-context";
 import type { Disagreement } from "@/lib/use-interactions";
@@ -40,8 +40,7 @@ const categoryStyle: Record<Category, { bg: string; text: string }> = {
   Other:   { bg: "bg-gray-100",   text: "text-gray-600" },
 };
 
-// Direct friends — used to filter which vouchers to show avatars for.
-const directFriendIds = avasDirectFriendIds;
+// directFriendIds is computed per-card from the friends prop
 
 function timeAgo(timestamp: string): string {
   const diff = Date.now() - new Date(timestamp).getTime();
@@ -129,8 +128,9 @@ export function RecommendationCard({
   const displayVouches = rec.vouches.length + (isVouched ? 1 : 0);
   const style = categoryStyle[rec.category];
 
+  const friendIdSet = new Set(friends.map((f) => f.id));
   const voucherFriends = rec.vouches
-    .filter((id) => directFriendIds.has(id))
+    .filter((id) => friendIdSet.has(id))
     .map((id) => friends.find((f) => f.id === id))
     .filter((f): f is User => f !== undefined);
 

@@ -4,25 +4,18 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Sparkles, MessageSquare, Settings, Lock, HeartPulse, Home, Dumbbell, PawPrint, Circle, Handshake, Bookmark, MapPin, Check } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import {
-  recommendations,
-  users,
-  mockAsks,
-  Ask,
-  Category,
-  Recommendation,
-} from "@/lib/mock-data";
+import type { Ask, Category, Recommendation } from "@/lib/mock-data";
+import type { DbAsk, DbRecommendation } from "@/lib/db-types";
 import { useCurrentUser } from "@/lib/auth-context";
 import { useUserRecs } from "@/lib/user-recs-context";
 import { useUserProfile } from "@/lib/user-profile-context";
 import { useInteractions } from "@/lib/use-interactions";
 import { useSettings } from "@/lib/settings-context";
 import { EditProfileSheet } from "@/components/edit-profile-sheet";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 type ProfileTab = "recs" | "looking";
-
-const ASKS_KEY = "trust-me-asks";
 
 const CATEGORY_ORDER: Category[] = ["Beauty", "Health", "Home", "Fitness", "Pets", "Other"];
 
@@ -136,7 +129,7 @@ function CategoryAccordion({
 
 // ─── Ask card for "Looking for" tab ──────────────────────────────────────────
 
-function LookingForCard({ ask, allRecs }: { ask: Ask; allRecs: Recommendation[] }) {
+function LookingForCard({ ask }: { ask: Ask }) {
   const catStyle = ask.category ? CATEGORY_META[ask.category] : null;
 
   return (
@@ -156,30 +149,10 @@ function LookingForCard({ ask, allRecs }: { ask: Ask; allRecs: Recommendation[] 
       <p className="text-sm text-charcoal leading-relaxed">&ldquo;{ask.question}&rdquo;</p>
 
       {ask.replies.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-black/5 space-y-3">
+        <div className="mt-3 pt-3 border-t border-black/5">
           <p className="text-[11px] font-bold text-muted uppercase tracking-wide">
             {ask.replies.length} {ask.replies.length === 1 ? "reply" : "replies"}
           </p>
-          {ask.replies.map((reply, i) => {
-            const replier = users.find((u) => u.id === reply.replierId);
-            const rec = allRecs.find((r) => r.id === reply.recId);
-            if (!replier) return null;
-            return (
-              <div key={i} className="flex gap-2.5">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={replier.avatar} alt={replier.name} className="w-7 h-7 rounded-full object-cover flex-shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-charcoal">{replier.name}</p>
-                  <p className="text-xs text-charcoal/70 mt-0.5 leading-relaxed">{reply.note}</p>
-                  {rec && (
-                    <span className="inline-block mt-1.5 text-[11px] font-semibold text-sage bg-sage-light/60 px-2.5 py-1 rounded-full">
-                      → {rec.businessName}
-                    </span>
-                  )}
-                </div>
-              </div>
-            );
-          })}
         </div>
       )}
 
@@ -192,11 +165,15 @@ function LookingForCard({ ask, allRecs }: { ask: Ask; allRecs: Recommendation[] 
 
 // ─── page ────────────────────────────────────────────────────────────────────
 
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const currentUser = useCurrentUser();
   const [activeTab, setActiveTab] = useState<ProfileTab>("recs");
-  const [userAsks, setUserAsks] = useState<Ask[]>([]);
+  const [myAsks, setMyAsks] = useState<Ask[]>([]);
   const [editOpen, setEditOpen] = useState(false);
   const [savedToast, setSavedToast] = useState(false);
 
@@ -206,28 +183,33 @@ export default function ProfilePage() {
   const { settings } = useSettings();
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(ASKS_KEY);
-      if (stored) setUserAsks(JSON.parse(stored));
-    } catch {
-      // ignore
-    }
-  }, []);
-
-  const allRecs = useMemo(() => [...userRecs, ...recommendations], [userRecs]);
-
-  // Current user's asks only
-  const avaAsks = useMemo(
-    () => [...userAsks, ...(currentUser.id ? mockAsks.filter((a) => a.askerId === currentUser.id) : [])],
-    [userAsks, currentUser.id]
-  );
+    if (!currentUser.id) return;
+    const supabase = createClient();
+    supabase
+      .from("asks")
+      .select("*")
+      .eq("user_id", currentUser.id)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        if (data) {
+          setMyAsks(data.map((row: DbAsk) => ({
+            id: row.id,
+            askerId: row.user_id,
+            question: row.question,
+            category: row.category ? (capitalize(row.category) as Category) : undefined,
+            timestamp: row.created_at,
+            replies: [],
+          })));
+        }
+      });
+  }, [currentUser.id]);
 
   // Summary card counts
   const recommendedCount = userRecs.length;
   const vouchedCount = interactions.vouches.length;
   const wantToTryCount = interactions.saves.length;
 
-  // Recs grouped by category (only Ava's own)
+  // Recs grouped by category
   const recsByCategory = useMemo(
     () =>
       CATEGORY_ORDER.map((cat) => ({
@@ -336,7 +318,7 @@ export default function ProfilePage() {
         {(
           [
             { key: "recs" as ProfileTab, label: "Recommendations" },
-            { key: "looking" as ProfileTab, label: "Looking for", count: avaAsks.length },
+            { key: "looking" as ProfileTab, label: "Looking for", count: myAsks.length },
           ] satisfies Array<{ key: ProfileTab; label: string; count?: number }>
         ).map(({ key, label, count }) => (
           <button
@@ -411,7 +393,7 @@ export default function ProfilePage() {
       {/* ── Looking for tab ─────────────────────────────────────────────── */}
       {activeTab === "looking" && (
         <div className="pt-5 pb-4">
-          {avaAsks.length === 0 ? (
+          {myAsks.length === 0 ? (
             <div className="flex flex-col items-center text-center py-10 px-8">
               <div className="w-14 h-14 rounded-full bg-sage-light flex items-center justify-center mb-4">
                 <MessageSquare size={24} className="text-sage" strokeWidth={1.5} />
@@ -426,8 +408,8 @@ export default function ProfilePage() {
               <p className="text-[12px] font-bold text-muted uppercase tracking-wide px-4 mb-3">
                 Active Asks
               </p>
-              {avaAsks.map((ask) => (
-                <LookingForCard key={ask.id} ask={ask} allRecs={allRecs} />
+              {myAsks.map((ask) => (
+                <LookingForCard key={ask.id} ask={ask} />
               ))}
             </>
           )}

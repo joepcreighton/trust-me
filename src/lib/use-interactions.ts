@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
-const STORAGE_KEY = "trust-me-interactions";
+import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/auth-context";
 
 export interface Disagreement {
   comment: string;
@@ -26,70 +26,99 @@ const DEFAULTS: Interactions = {
 };
 
 export function useInteractions() {
+  const { authUser } = useAuth();
   const [interactions, setInteractions] = useState<Interactions>(DEFAULTS);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) setInteractions({ ...DEFAULTS, ...JSON.parse(stored) });
-    } catch {
-      // ignore
+    if (!authUser) {
+      setInteractions(DEFAULTS);
+      return;
     }
-  }, []);
 
-  function persist(updated: Interactions) {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(updated)); } catch { /* ignore */ }
-  }
+    const supabase = createClient();
+
+    async function load() {
+      const [likesRes, vouchesRes, savesRes] = await Promise.all([
+        supabase.from("likes").select("recommendation_id").eq("user_id", authUser!.id),
+        supabase.from("vouches").select("recommendation_id").eq("user_id", authUser!.id),
+        supabase.from("saves").select("recommendation_id").eq("user_id", authUser!.id),
+      ]);
+
+      setInteractions({
+        likes: (likesRes.data ?? []).map((r) => r.recommendation_id),
+        vouches: (vouchesRes.data ?? []).map((r) => r.recommendation_id),
+        saves: (savesRes.data ?? []).map((r) => r.recommendation_id),
+        vouchChains: {},
+        disagreements: {},
+      });
+    }
+
+    load();
+  }, [authUser]);
 
   function toggle(type: "likes" | "saves", id: string) {
+    if (!authUser) return;
+    const supabase = createClient();
+    const table = type === "likes" ? "likes" : "saves";
+
     setInteractions((prev) => {
       const arr = prev[type];
-      const next = arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id];
-      const updated = { ...prev, [type]: next };
-      persist(updated);
-      return updated;
+      const has = arr.includes(id);
+      const next = has ? arr.filter((x) => x !== id) : [...arr, id];
+
+      if (has) {
+        supabase.from(table).delete().eq("user_id", authUser.id).eq("recommendation_id", id).then(() => {});
+      } else {
+        supabase.from(table).insert({ user_id: authUser.id, recommendation_id: id }).then(() => {});
+      }
+
+      return { ...prev, [type]: next };
     });
   }
 
   function addVouch(recId: string) {
+    if (!authUser) return;
+    const supabase = createClient();
+
     setInteractions((prev) => {
       if (prev.vouches.includes(recId)) return prev;
-      const updated = { ...prev, vouches: [...prev.vouches, recId] };
-      persist(updated);
-      return updated;
+      supabase.from("vouches").insert({ user_id: authUser.id, recommendation_id: recId }).then(() => {});
+      return { ...prev, vouches: [...prev.vouches, recId] };
     });
   }
 
   function removeVouch(recId: string) {
+    if (!authUser) return;
+    const supabase = createClient();
+
     setInteractions((prev) => {
-      const updated = { ...prev, vouches: prev.vouches.filter((id) => id !== recId) };
-      persist(updated);
-      return updated;
+      supabase.from("vouches").delete().eq("user_id", authUser.id).eq("recommendation_id", recId).then(() => {});
+      return { ...prev, vouches: prev.vouches.filter((id) => id !== recId) };
     });
   }
 
-  function addVouchChain(recId: string, chain: string[]) {
-    setInteractions((prev) => {
-      const existing = prev.vouchChains[recId] ?? [];
-      const updated = {
-        ...prev,
-        vouchChains: { ...prev.vouchChains, [recId]: [...existing, chain] },
-      };
-      persist(updated);
-      return updated;
-    });
-  }
+  // chain_source stored separately; vouchChains local display removed
+  function addVouchChain(_recId: string, _chain: string[]) {}
 
   function addDisagreement(recId: string, comment: string) {
+    if (!authUser) return;
+    const supabase = createClient();
+
+    supabase.from("disagreements").insert({
+      user_id: authUser.id,
+      recommendation_id: recId,
+      comment,
+    }).then(() => {});
+
     setInteractions((prev) => {
       const existing = prev.disagreements[recId] ?? [];
-      const disagreement: Disagreement = { comment, timestamp: new Date().toISOString() };
-      const updated = {
+      return {
         ...prev,
-        disagreements: { ...prev.disagreements, [recId]: [...existing, disagreement] },
+        disagreements: {
+          ...prev.disagreements,
+          [recId]: [...existing, { comment, timestamp: new Date().toISOString() }],
+        },
       };
-      persist(updated);
-      return updated;
     });
   }
 
