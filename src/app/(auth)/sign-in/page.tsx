@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Mail, ArrowRight, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { cn } from "@/lib/utils";
 
 function GoogleIcon() {
   return (
@@ -18,9 +16,6 @@ function GoogleIcon() {
 }
 
 export default function SignInPage() {
-  const [emailOpen, setEmailOpen] = useState(false);
-  const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,115 +33,28 @@ export default function SignInPage() {
     }
   }
 
-  async function handleMagicLink(e: React.FormEvent) {
-    e.preventDefault();
-    if (!email.trim()) return;
-    setError(null);
-    setLoading(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
-    });
-    setLoading(false);
-    if (error) {
-      setError("Couldn't send the link. Check the email address and try again.");
-    } else {
-      setSent(true);
-    }
-  }
-
   return (
     <div className="min-h-screen bg-cream flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm">
-        {/* Wordmark */}
         <h1 className="font-display text-[3rem] text-charcoal text-center tracking-tight leading-none mb-12">
           trust me
         </h1>
 
-        {sent ? (
-          /* Confirmation state */
-          <div className="flex flex-col items-center text-center gap-4 py-6">
-            <div className="w-14 h-14 rounded-full bg-sage flex items-center justify-center">
-              <Check size={26} className="text-white" strokeWidth={2.5} />
-            </div>
-            <div>
-              <p className="font-semibold text-charcoal text-lg">Check your email</p>
-              <p className="text-sm text-muted mt-1.5 leading-relaxed">
-                We sent a sign-in link to{" "}
-                <span className="font-medium text-charcoal">{email}</span>.
-                <br />
-                It expires in 1 hour.
-              </p>
-            </div>
-            <button
-              onClick={() => { setSent(false); setEmail(""); }}
-              className="text-sm text-sage font-medium mt-2"
-            >
-              Use a different email
-            </button>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {/* Google */}
-            <button
-              onClick={handleGoogle}
-              disabled={loading}
-              className="flex items-center justify-center gap-3 w-full bg-sage text-white font-semibold text-base py-4 rounded-2xl shadow-sm shadow-sage/20 active:scale-[0.98] transition-transform disabled:opacity-60"
-            >
-              <GoogleIcon />
-              Continue with Google
-            </button>
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={handleGoogle}
+            disabled={loading}
+            className="flex items-center justify-center gap-3 w-full bg-sage text-white font-semibold text-base py-4 rounded-2xl shadow-sm shadow-sage/20 active:scale-[0.98] transition-transform disabled:opacity-60"
+          >
+            <GoogleIcon />
+            Continue with Google
+          </button>
 
-            <div className="flex items-center gap-3 py-1">
-              <div className="flex-1 h-px bg-black/8" />
-              <span className="text-xs text-muted font-medium">or</span>
-              <div className="flex-1 h-px bg-black/8" />
-            </div>
+          {error && (
+            <p className="text-sm text-rose-500 text-center">{error}</p>
+          )}
+        </div>
 
-            {/* Email */}
-            {!emailOpen ? (
-              <button
-                onClick={() => setEmailOpen(true)}
-                disabled={loading}
-                className="flex items-center justify-center gap-3 w-full border border-black/12 bg-white text-charcoal font-semibold text-base py-4 rounded-2xl shadow-sm shadow-black/4 active:scale-[0.98] transition-transform"
-              >
-                <Mail size={20} strokeWidth={1.75} />
-                Continue with email
-              </button>
-            ) : (
-              <form onSubmit={handleMagicLink} className="flex flex-col gap-3">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  autoFocus
-                  required
-                  className="w-full border border-black/12 bg-white text-charcoal text-base px-4 py-3.5 rounded-2xl focus:outline-none focus:ring-2 focus:ring-sage/30 placeholder:text-muted/50"
-                />
-                <button
-                  type="submit"
-                  disabled={loading || !email.trim()}
-                  className="flex items-center justify-center gap-2 w-full bg-sage text-white font-semibold text-base py-4 rounded-2xl shadow-sm shadow-sage/20 active:scale-[0.98] transition-transform disabled:opacity-50"
-                >
-                  {loading ? "Sending…" : (
-                    <>
-                      Send me a link
-                      <ArrowRight size={18} strokeWidth={2} />
-                    </>
-                  )}
-                </button>
-              </form>
-            )}
-
-            {error && (
-              <p className="text-sm text-rose-500 text-center">{error}</p>
-            )}
-          </div>
-        )}
-
-        {/* Footer */}
         <p className="text-center text-sm text-muted mt-10">
           Don&apos;t have an account?{" "}
           <Link href="/sign-up" className="text-sage font-semibold">
