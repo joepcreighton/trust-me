@@ -173,7 +173,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 setActionSheetOpen(false);
                 setSheetOpen(true);
               }}
-              className="w-full flex items-center gap-4 px-5 py-4 bg-sage rounded-2xl text-white active:scale-[0.98] transition-transform"
+              className="w-full flex items-center gap-4 px-5 py-4 bg-sage rounded-2xl text-white active:opacity-75"
             >
               <PlusCircle size={22} strokeWidth={1.75} />
               <div className="text-left">

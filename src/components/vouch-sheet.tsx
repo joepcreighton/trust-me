@@ -89,7 +89,7 @@ export function VouchSheet({
           <div className="px-5 pb-10 space-y-3">
             <button
               onClick={() => setStep(2)}
-              className="w-full flex items-center gap-4 px-5 py-4 bg-sage rounded-2xl text-white text-left active:scale-[0.98] transition-transform"
+              className="w-full flex items-center gap-4 px-5 py-4 bg-sage rounded-2xl text-white text-left active:opacity-75"
             >
               <span className="text-2xl leading-none">🤝</span>
               <div>
@@ -99,7 +99,7 @@ export function VouchSheet({
             </button>
             <button
               onClick={handleSaveInstead}
-              className="w-full flex items-center gap-4 px-5 py-4 bg-black/5 rounded-2xl text-left active:scale-[0.98] transition-transform"
+              className="w-full flex items-center gap-4 px-5 py-4 bg-black/5 rounded-2xl text-left active:opacity-75"
             >
               <span className="text-2xl leading-none">🔖</span>
               <div>
@@ -114,7 +114,7 @@ export function VouchSheet({
           <div className="px-5 pb-10 space-y-2.5">
             <button
               onClick={() => handleSource([recommender.id, currentUser.id])}
-              className="w-full text-left px-5 py-4 bg-sage-light/50 rounded-2xl border border-sage/20 active:scale-[0.98] transition-transform"
+              className="w-full text-left px-5 py-4 bg-sage-light/50 rounded-2xl border border-sage/20 active:opacity-75"
             >
               <p className="font-semibold text-charcoal text-sm leading-tight">
                 {recommenderFirst} told me about them
@@ -125,7 +125,7 @@ export function VouchSheet({
             </button>
             <button
               onClick={() => handleSource([currentUser.id, recommender.id])}
-              className="w-full text-left px-5 py-4 bg-black/4 rounded-2xl border border-black/8 active:scale-[0.98] transition-transform"
+              className="w-full text-left px-5 py-4 bg-black/4 rounded-2xl border border-black/8 active:opacity-75"
             >
               <p className="font-semibold text-charcoal text-sm leading-tight">
                 I told {recommenderFirst} about them
@@ -136,7 +136,7 @@ export function VouchSheet({
             </button>
             <button
               onClick={() => handleSource(undefined)}
-              className="w-full text-left px-5 py-4 bg-black/4 rounded-2xl border border-black/8 active:scale-[0.98] transition-transform"
+              className="w-full text-left px-5 py-4 bg-black/4 rounded-2xl border border-black/8 active:opacity-75"
             >
               <p className="font-semibold text-charcoal text-sm leading-tight">
                 Unrelated — I already knew them

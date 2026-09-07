@@ -111,7 +111,7 @@ function RecsForYouCard({
   return (
     <button
       onClick={onClick}
-      className="flex-shrink-0 w-[168px] rounded-2xl overflow-hidden bg-white shadow-sm shadow-black/8 active:scale-[0.97] transition-transform text-left"
+      className="flex-shrink-0 w-[168px] rounded-2xl overflow-hidden bg-white shadow-sm shadow-black/8 active:opacity-75 text-left"
     >
       <div className="h-[128px] w-full overflow-hidden relative">
         {rec.photo ? (
@@ -394,7 +394,7 @@ function PersonRow({
             ? "bg-sage/10 text-sage border-sage/20"
             : isPending
             ? "bg-black/5 text-muted border-black/10"
-            : "bg-sage text-white border-sage shadow-sm active:scale-95"
+            : "bg-sage text-white border-sage shadow-sm active:opacity-75"
         )}
       >
         {isFriend ? "Friends" : isPending ? "Requested" : "Add friend"}

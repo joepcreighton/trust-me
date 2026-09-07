@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, MapPin, Heart, Handshake, ChevronDown } from "lucide-react";
+import { ArrowLeft, MapPin, Heart, Handshake, ChevronDown, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { DbUser } from "@/lib/db-types";
@@ -41,6 +41,7 @@ interface VouchedRow {
 }
 
 type FriendStatus = "friends" | "pending_sent" | "pending_received" | "none";
+type ConfirmAction = "cancel_request" | "remove_friend" | null;
 
 function CategoryGroup({ category, recs }: { category: string; recs: RecRow[] }) {
   const [open, setOpen] = useState(true);
@@ -48,6 +49,7 @@ function CategoryGroup({ category, recs }: { category: string; recs: RecRow[] })
   return (
     <div className="mx-4 mb-3 rounded-2xl overflow-hidden bg-white shadow-sm shadow-black/5">
       <button
+        type="button"
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-black/4"
       >
@@ -92,14 +94,24 @@ function CategoryGroup({ category, recs }: { category: string; recs: RecRow[] })
 export default function UserProfilePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+
   const [profile, setProfile] = useState<DbUser | null>(null);
   const [recs, setRecs] = useState<RecRow[]>([]);
   const [vouchedRecs, setVouchedRecs] = useState<VouchedRow[]>([]);
+  const [friendCount, setFriendCount] = useState<number | null>(null);
   const [friendStatus, setFriendStatus] = useState<FriendStatus>("none");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [addingFriend, setAddingFriend] = useState(false);
+
+  // Friend action state
+  const [actionInProgress, setActionInProgress] = useState(false);
   const [friendError, setFriendError] = useState<string | null>(null);
+
+  // Confirm modal (cancel request / remove friend)
+  const [confirmModal, setConfirmModal] = useState<ConfirmAction>(null);
+  const [modalLoading, setModalLoading] = useState(false);
+
+  // Tab
   const [showVouches, setShowVouches] = useState(false);
 
   useEffect(() => {
@@ -110,7 +122,7 @@ export default function UserProfilePage() {
       if (!authUser) { setLoading(false); return; }
       setCurrentUserId(authUser.id);
 
-      const [profileRes, recsRes, vouchesRes, friendshipRes] = await Promise.all([
+      const [profileRes, recsRes, vouchesRes, friendshipRes, friendCountRes] = await Promise.all([
         supabase.from("users").select("*").eq("id", id).single(),
         supabase
           .from("recommendations")
@@ -128,11 +140,18 @@ export default function UserProfilePage() {
           .select("status, requested_by")
           .or(`user_a.eq.${id},user_b.eq.${id}`)
           .maybeSingle(),
+        // get_friend_count is a SECURITY DEFINER function (migration 003).
+        // Returns null if the function hasn't been applied yet — handled gracefully.
+        supabase.rpc("get_friend_count", { p_user_id: id }).single(),
       ]);
 
       setProfile(profileRes.data);
       setRecs((recsRes.data as RecRow[]) ?? []);
       setVouchedRecs(((vouchesRes.data ?? []) as unknown as VouchedRow[]));
+
+      if (!friendCountRes.error && typeof friendCountRes.data === "number") {
+        setFriendCount(friendCountRes.data);
+      }
 
       if (friendshipRes.data) {
         const f = friendshipRes.data as { status: string; requested_by: string };
@@ -149,15 +168,16 @@ export default function UserProfilePage() {
     load();
   }, [id]);
 
+  // Handles Add friend + Accept request (positive actions — no confirmation)
   async function handleFriendAction() {
     setFriendError(null);
-    setAddingFriend(true);
+    setActionInProgress(true);
     const supabase = createClient();
 
     const { data: { user: authUser } } = await supabase.auth.getUser();
     if (!authUser) {
-      setFriendError("You must be signed in to do that.");
-      setAddingFriend(false);
+      setFriendError("You must be signed in.");
+      setActionInProgress(false);
       return;
     }
 
@@ -167,9 +187,10 @@ export default function UserProfilePage() {
         .update({ status: "accepted" })
         .or(`user_a.eq.${id},user_b.eq.${id}`);
       if (error) {
-        setFriendError("Couldn't accept the request. Please try again.");
+        setFriendError("Couldn't accept the request. Try again.");
       } else {
         setFriendStatus("friends");
+        setFriendCount((c) => (c ?? 0) + 1);
       }
     } else {
       const { error } = await supabase.from("friendships").insert({
@@ -179,13 +200,51 @@ export default function UserProfilePage() {
         requested_by: authUser.id,
       });
       if (error) {
-        setFriendError("Couldn't send the request. Please try again.");
+        setFriendError("Couldn't send request. Try again.");
       } else {
         setFriendStatus("pending_sent");
       }
     }
 
-    setAddingFriend(false);
+    setActionInProgress(false);
+  }
+
+  // Routes button tap: positive actions are immediate; destructive ones need confirmation
+  function handleFriendButtonTap() {
+    if (friendStatus === "pending_sent") {
+      setConfirmModal("cancel_request");
+    } else if (friendStatus === "friends") {
+      setConfirmModal("remove_friend");
+    } else {
+      handleFriendAction();
+    }
+  }
+
+  // Confirmed destructive action (cancel request or remove friend)
+  async function handleConfirmAction() {
+    setModalLoading(true);
+    const supabase = createClient();
+
+    const { error } = await supabase
+      .from("friendships")
+      .delete()
+      .or(`user_a.eq.${id},user_b.eq.${id}`);
+
+    if (error) {
+      setFriendError(
+        confirmModal === "cancel_request"
+          ? "Couldn't cancel request. Try again."
+          : "Couldn't remove friend. Try again."
+      );
+    } else {
+      setFriendStatus("none");
+      if (confirmModal === "remove_friend") {
+        setFriendCount((c) => Math.max(0, (c ?? 1) - 1));
+      }
+    }
+
+    setModalLoading(false);
+    setConfirmModal(null);
   }
 
   const recsByCategory = useMemo(() => {
@@ -201,7 +260,7 @@ export default function UserProfilePage() {
   if (loading) {
     return (
       <div className="pt-4 pb-4">
-        <button onClick={() => router.back()} className="flex items-center gap-1.5 px-4 py-3 text-sm text-muted">
+        <button type="button" onClick={() => router.back()} className="flex items-center gap-1.5 px-4 py-3 text-sm text-muted">
           <ArrowLeft size={16} />
           Back
         </button>
@@ -216,7 +275,7 @@ export default function UserProfilePage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[65vh] px-8 text-center">
         <p className="text-sm text-muted">User not found.</p>
-        <button onClick={() => router.back()} className="mt-3 text-sage text-sm font-semibold">
+        <button type="button" onClick={() => router.back()} className="mt-3 text-sage text-sm font-semibold">
           Go back
         </button>
       </div>
@@ -227,10 +286,21 @@ export default function UserProfilePage() {
   const isOwnProfile = currentUserId === id;
   const validVouches = vouchedRecs.filter((v) => v.rec);
 
+  const friendBtnLabel = actionInProgress
+    ? "…"
+    : friendStatus === "friends"
+    ? "Friends"
+    : friendStatus === "pending_sent"
+    ? "Requested"
+    : friendStatus === "pending_received"
+    ? "Accept"
+    : "Add friend";
+
   return (
     <div className="pb-8">
       {/* Back */}
       <button
+        type="button"
         onClick={() => router.back()}
         className="flex items-center gap-1.5 px-4 py-3 text-sm text-muted hover:text-charcoal transition-colors"
       >
@@ -259,30 +329,24 @@ export default function UserProfilePage() {
           </div>
 
           {!isOwnProfile && (
-            friendStatus === "friends" ? (
-              <span className="flex-shrink-0 text-sm font-semibold px-4 py-2 rounded-full bg-sage/10 text-sage border border-sage/20">
-                Friends
-              </span>
-            ) : (
-              <button
-                onClick={handleFriendAction}
-                disabled={addingFriend || friendStatus === "pending_sent"}
-                className={cn(
-                  "flex-shrink-0 text-sm font-semibold px-4 py-2 rounded-full border transition-all",
-                  friendStatus === "pending_sent"
-                    ? "bg-black/5 text-muted border-black/10"
-                    : "bg-sage text-white border-sage shadow-sm active:scale-95 disabled:opacity-60"
-                )}
-              >
-                {addingFriend
-                  ? "…"
+            <button
+              type="button"
+              onClick={handleFriendButtonTap}
+              disabled={actionInProgress}
+              className={cn(
+                "flex-shrink-0 text-sm font-semibold px-4 py-2 rounded-full border",
+                "transition-opacity disabled:opacity-50",
+                // active:opacity-75 instead of active:scale-* — scale shrinks the hit
+                // target on iOS Safari causing tap to miss; opacity is safe
+                friendStatus === "friends"
+                  ? "bg-sage/10 text-sage border-sage/20 active:opacity-75"
                   : friendStatus === "pending_sent"
-                  ? "Requested"
-                  : friendStatus === "pending_received"
-                  ? "Accept"
-                  : "Add friend"}
-              </button>
-            )
+                  ? "bg-black/5 text-muted border-black/10 active:opacity-75"
+                  : "bg-sage text-white border-sage shadow-sm active:opacity-75"
+              )}
+            >
+              {friendBtnLabel}
+            </button>
           )}
         </div>
 
@@ -309,13 +373,29 @@ export default function UserProfilePage() {
               </div>
             </>
           )}
+          {friendCount !== null && (
+            <>
+              <div className="w-px h-6 bg-black/8" />
+              <Link
+                href={`/profile/${id}/friends`}
+                className="flex flex-col items-center group"
+              >
+                <span className="font-display text-xl text-charcoal leading-tight group-hover:text-sage transition-colors">{friendCount}</span>
+                <span className="flex items-center gap-0.5 text-[11px] text-muted group-hover:text-sage transition-colors">
+                  <Users size={10} strokeWidth={1.75} />
+                  friends
+                </span>
+              </Link>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Tab switcher when both sections exist */}
+      {/* Tabs */}
       {validVouches.length > 0 && (
         <div className="flex border-b border-black/8 bg-cream sticky top-0 z-10">
           <button
+            type="button"
             onClick={() => setShowVouches(false)}
             className={cn(
               "flex-1 py-3.5 text-sm font-semibold border-b-2 -mb-px transition-colors",
@@ -325,6 +405,7 @@ export default function UserProfilePage() {
             Recommendations
           </button>
           <button
+            type="button"
             onClick={() => setShowVouches(true)}
             className={cn(
               "flex-1 py-3.5 text-sm font-semibold border-b-2 -mb-px transition-colors",
@@ -400,6 +481,55 @@ export default function UserProfilePage() {
             })}
           </div>
         </div>
+      )}
+
+      {/* Confirm modal (cancel request / remove friend) */}
+      {confirmModal && (
+        <>
+          <div
+            className="fixed inset-0 z-[70] bg-black/40"
+            onClick={() => !modalLoading && setConfirmModal(null)}
+          />
+          <div className="fixed bottom-0 left-1/2 -translate-x-1/2 z-[80] w-full max-w-[430px] bg-white rounded-t-3xl">
+            <div className="flex justify-center pt-3 pb-2">
+              <div className="w-10 h-1 bg-black/15 rounded-full" />
+            </div>
+            <div className="px-5 pt-3 pb-4">
+              <h3 className="font-semibold text-charcoal text-base leading-snug">
+                {confirmModal === "cancel_request"
+                  ? "Cancel friend request?"
+                  : `Remove ${profile.full_name} as a friend?`}
+              </h3>
+              <p className="text-sm text-muted mt-1">
+                {confirmModal === "cancel_request"
+                  ? "Your request will be withdrawn."
+                  : "You'll both lose access to each other's recommendations."}
+              </p>
+            </div>
+            <div className="border-t border-black/8">
+              <button
+                type="button"
+                onClick={handleConfirmAction}
+                disabled={modalLoading}
+                className="w-full py-4 text-rose-500 font-semibold text-sm border-b border-black/8 disabled:opacity-50 active:opacity-75"
+              >
+                {modalLoading
+                  ? "…"
+                  : confirmModal === "cancel_request"
+                  ? "Cancel request"
+                  : "Remove friend"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmModal(null)}
+                disabled={modalLoading}
+                className="w-full py-4 text-muted text-sm active:opacity-75"
+              >
+                Never mind
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

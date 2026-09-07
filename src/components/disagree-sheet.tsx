@@ -91,7 +91,7 @@ export function DisagreeSheet({ isOpen, onClose, onSubmit }: DisagreeSheetProps)
               className={cn(
                 "flex-1 py-3 rounded-full text-sm font-semibold transition-all",
                 isValid
-                  ? "bg-charcoal text-white active:scale-[0.98]"
+                  ? "bg-charcoal text-white active:opacity-75"
                   : "bg-black/8 text-muted cursor-not-allowed"
               )}
             >

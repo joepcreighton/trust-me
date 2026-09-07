@@ -45,6 +45,11 @@ button, a {
   touch-action: manipulation;
 }
 
+/* cursor:pointer on buttons ensures iOS recognises dynamically-rendered buttons as tappable */
+button {
+  cursor: pointer;
+}
+
 /* Hide scrollbar utility */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

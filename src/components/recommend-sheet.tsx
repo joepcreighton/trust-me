@@ -360,7 +360,7 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
               "w-full flex items-center justify-center gap-2",
               "h-12 rounded-full font-semibold text-sm transition-all",
               canAdvance() && !posting
-                ? "bg-sage text-white shadow-sm shadow-sage/30 active:scale-[0.98]"
+                ? "bg-sage text-white shadow-sm shadow-sage/30 active:opacity-75"
                 : "bg-black/8 text-muted cursor-not-allowed"
             )}
           >
