@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { User } from "@/lib/mock-data";
 
 interface VouchAvatarsProps {
@@ -36,14 +37,24 @@ export function VouchAvatars({
   return (
     <div className="flex items-center gap-2 mt-3 pt-3 border-t border-black/5">
       <div className="flex -space-x-2">
-        {shown.map((v) => (
-          <img
-            key={v.id}
-            src={v.avatar}
-            alt={v.name}
-            className="w-6 h-6 rounded-full border-2 border-white object-cover"
-          />
-        ))}
+        {shown.map((v) => {
+          const isYou = v.id === "ava";
+          const avatar = (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={v.avatar}
+              alt={v.name}
+              className="w-6 h-6 rounded-full border-2 border-white object-cover"
+            />
+          );
+          return isYou ? (
+            <span key={v.id}>{avatar}</span>
+          ) : (
+            <Link key={v.id} href={`/profile/${v.id}`} onClick={(e) => e.stopPropagation()} className="flex-shrink-0">
+              {avatar}
+            </Link>
+          );
+        })}
         {remaining > 0 && (
           <div className="w-6 h-6 rounded-full border-2 border-white bg-sage-light flex items-center justify-center">
             <span className="text-[8px] font-semibold text-sage-dark">

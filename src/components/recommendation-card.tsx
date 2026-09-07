@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Heart, Handshake, MessageCircle, Bookmark, MapPin, ThumbsDown, Link2, Globe, Phone } from "lucide-react";
 import {
   Recommendation, User, Category,
@@ -148,18 +149,24 @@ export function RecommendationCard({
         {/* Card header */}
         <div className="p-4 pb-0">
           <div className="flex items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={recommender.avatar}
-              alt={recommender.name}
-              className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-            />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm leading-snug">
-                <span className="font-semibold text-charcoal">{recommender.name}</span>
-                <span className="text-muted"> recommends</span>
-              </p>
-            </div>
+            <Link
+              href={recommender.id ? `/profile/${recommender.id}` : "/profile"}
+              className="flex items-center gap-3 flex-1 min-w-0 group"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={recommender.avatar}
+                alt={recommender.name}
+                className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm leading-snug">
+                  <span className="font-semibold text-charcoal group-hover:underline underline-offset-2">{recommender.name}</span>
+                  <span className="text-muted"> recommends</span>
+                </p>
+              </div>
+            </Link>
             <span className="text-xs text-muted flex-shrink-0">{timeAgo(rec.timestamp)}</span>
           </div>
 

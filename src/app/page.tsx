@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import type { Category, Ask, Recommendation } from "@/lib/mock-data";
 import type { DbRecommendation, DbAsk } from "@/lib/db-types";
@@ -99,10 +100,12 @@ function AskFeedCard({ ask, askerName, askerAvatar, replierAvatars }: {
   return (
     <div className="mx-4 mb-4 bg-cream rounded-2xl border border-black/8 px-4 py-4">
       <div className="flex items-center gap-2.5 mb-2.5">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={askerAvatar} alt={askerName} className="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+        <Link href={`/profile/${ask.askerId}`} className="flex-shrink-0">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={askerAvatar} alt={askerName} className="w-8 h-8 rounded-full object-cover" />
+        </Link>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-charcoal">{askerName}</p>
+          <Link href={`/profile/${ask.askerId}`} className="text-xs font-semibold text-charcoal hover:underline underline-offset-2">{askerName}</Link>
           <p className="text-[11px] text-muted">{timeAgo(ask.timestamp)}</p>
         </div>
         <span className="text-[10px] font-bold text-muted/70 uppercase tracking-wider bg-black/6 px-2 py-0.5 rounded-full flex-shrink-0">

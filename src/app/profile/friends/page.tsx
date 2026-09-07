@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ArrowLeft, Search, MapPin, Users, Bell } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -136,10 +137,10 @@ export default function FriendsPage() {
       ) : (
         <div className="mx-4 mt-2 bg-white rounded-2xl shadow-sm shadow-black/5 overflow-hidden divide-y divide-black/5">
           {sorted.map((friend) => (
-            <button
+            <Link
               key={friend.id}
-              onClick={() => router.push(`/profile/${friend.id}`)}
-              className="w-full flex items-center gap-3 px-4 py-3.5 text-left active:bg-black/4 transition-colors"
+              href={`/profile/${friend.id}`}
+              className="flex items-center gap-3 px-4 py-3.5 active:bg-black/4 transition-colors"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -148,7 +149,7 @@ export default function FriendsPage() {
                 className="w-10 h-10 rounded-full object-cover flex-shrink-0"
               />
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-charcoal text-sm">{friend.full_name}</p>
+                <p className="font-semibold text-charcoal text-sm hover:underline underline-offset-2">{friend.full_name}</p>
                 <p className="text-xs text-muted mt-0.5">@{friend.handle}</p>
               </div>
               {friend.locations?.[0]?.city && (
@@ -157,7 +158,7 @@ export default function FriendsPage() {
                   {friend.locations[0].city}
                 </p>
               )}
-            </button>
+            </Link>
           ))}
         </div>
       )}

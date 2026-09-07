@@ -39,9 +39,10 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Smooth tap highlights on mobile */
+/* Smooth tap highlights on mobile; manipulation prevents iOS 300ms delay */
 button, a {
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 /* Hide scrollbar utility */
