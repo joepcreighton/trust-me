@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Search, ChevronRight, Users, TrendingUp, X, MapPin, ChevronDown, Heart, Handshake, Star } from "lucide-react";
+import Link from "next/link";
 import {
   CITY_NEIGHBORHOODS,
   Category,
@@ -342,6 +343,66 @@ function ExternalResultCard({ result }: { result: ExternalResult }) {
   );
 }
 
+// ─── person row ───────────────────────────────────────────────────────────────
+
+type PersonResult = {
+  id: string;
+  handle: string;
+  full_name: string;
+  avatar_url: string | null;
+  locations: Array<{ city: string; state: string; neighborhood?: string }>;
+};
+
+function PersonRow({
+  person,
+  friendIds,
+  sentRequestIds,
+  onAddFriend,
+}: {
+  person: PersonResult;
+  friendIds: Set<string>;
+  sentRequestIds: Set<string>;
+  onAddFriend: () => void;
+}) {
+  const primaryCity = person.locations?.[0]?.city;
+  const isFriend = friendIds.has(person.id);
+  const isPending = sentRequestIds.has(person.id);
+
+  return (
+    <Link
+      href={`/profile/${person.id}`}
+      className="flex items-center gap-3 px-4 py-3.5 active:bg-black/4 transition-colors"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={person.avatar_url ?? `https://i.pravatar.cc/150?u=${person.id}`}
+        alt={person.full_name}
+        className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+      />
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold text-charcoal text-sm leading-tight">{person.full_name}</p>
+        <p className="text-xs text-muted mt-0.5 truncate">
+          @{person.handle}{primaryCity ? ` · ${primaryCity}` : ""}
+        </p>
+      </div>
+      <button
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAddFriend(); }}
+        disabled={isFriend || isPending}
+        className={cn(
+          "flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border transition-all",
+          isFriend
+            ? "bg-sage/10 text-sage border-sage/20"
+            : isPending
+            ? "bg-black/5 text-muted border-black/10"
+            : "bg-sage text-white border-sage shadow-sm active:scale-95"
+        )}
+      >
+        {isFriend ? "Friends" : isPending ? "Requested" : "Add friend"}
+      </button>
+    </Link>
+  );
+}
+
 // ─── flat results ─────────────────────────────────────────────────────────────
 
 function FlatResults({ recs, onCardClick, showFallback }: { recs: RichRec[]; onCardClick: (id: string) => void; showFallback?: boolean }) {
@@ -384,11 +445,15 @@ export default function DiscoverPage() {
   const [friendIds, setFriendIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
 
+  // People search state
+  const [peopleResults, setPeopleResults] = useState<PersonResult[]>([]);
+  const [sentRequestIds, setSentRequestIds] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     const supabase = createClient();
 
     async function loadData() {
-      const [recRes, friendRes] = await Promise.all([
+      const [recRes, friendRes, pendingRes] = await Promise.all([
         supabase
           .from("recommendations")
           .select(`
@@ -406,6 +471,13 @@ export default function DiscoverPage() {
               .eq("status", "accepted")
               .or(`user_a.eq.${currentUser.id},user_b.eq.${currentUser.id}`)
           : Promise.resolve({ data: [] }),
+        currentUser.id
+          ? supabase
+              .from("friendships")
+              .select("user_a, user_b")
+              .eq("status", "pending")
+              .eq("requested_by", currentUser.id)
+          : Promise.resolve({ data: [] }),
       ]);
 
       if (recRes.data) {
@@ -421,11 +493,60 @@ export default function DiscoverPage() {
         setFriendIds(ids);
       }
 
+      if (pendingRes.data) {
+        const sent = new Set(
+          (pendingRes.data as { user_a: string; user_b: string }[]).map((row) =>
+            row.user_a === currentUser.id ? row.user_b : row.user_a
+          )
+        );
+        setSentRequestIds(sent);
+      }
+
       setLoading(false);
     }
 
     if (currentUser.id !== "") loadData();
   }, [currentUser.id]);
+
+  // Debounced people search
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2 || !currentUser.id) {
+      setPeopleResults([]);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("users")
+        .select("id, handle, full_name, avatar_url, locations")
+        .or(`full_name.ilike.%${q}%,handle.ilike.%${q}%`)
+        .neq("id", currentUser.id)
+        .limit(5);
+      if (!cancelled && data) {
+        setPeopleResults(data as PersonResult[]);
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [query, currentUser.id]);
+
+  async function sendFriendRequest(personId: string) {
+    if (!currentUser.id) return;
+    const supabase = createClient();
+    const { error } = await supabase.from("friendships").insert({
+      user_a: currentUser.id,
+      user_b: personId,
+      status: "pending",
+      requested_by: currentUser.id,
+    });
+    if (!error) setSentRequestIds((prev) => new Set([...prev, personId]));
+  }
 
   function toggleFilter(f: ActionFilter) {
     setActiveFilters((prev) => {
@@ -471,6 +592,7 @@ export default function DiscoverPage() {
     });
   }, [allRecs, query, activeCategory, activeFilters, locationFilter]);
 
+  // Only show fallback when there's a real query AND zero network results
   const showFallback = query.trim().length > 0 && filteredRecs.length === 0;
 
   const fromYourPeople = useMemo(
@@ -500,6 +622,8 @@ export default function DiscoverPage() {
   const friends = allRecs
     .map((r) => ({ id: r.recommenderId, name: r._recommenderName, username: "unknown", avatar: r._recommenderAvatar, friends: [] as [] }))
     .filter((u, i, arr) => u.id && u.id !== currentUser.id && arr.findIndex((x) => x.id === u.id) === i);
+
+  const showPeople = query.trim().length >= 2 && peopleResults.length > 0;
 
   return (
     <>
@@ -577,39 +701,65 @@ export default function DiscoverPage() {
         {/* Content */}
         {loading ? (
           <SkeletonList count={3} />
-        ) : isFiltered ? (
-          <>
-            <FlatResults recs={filteredRecs} onCardClick={setSelectedId} showFallback={showFallback} />
-
-            {showFallback && (
-              <div className="mb-5 mt-2">
-                <div className="flex items-center gap-2 px-4 mb-2">
-                  <h3 className="text-[13px] font-bold tracking-wide uppercase text-muted">You might also like</h3>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/6 text-muted/70 ml-auto">
-                    via Yelp &amp; Google
-                  </span>
-                </div>
-                <div className="mx-4 bg-white rounded-2xl shadow-sm shadow-black/5 divide-y divide-black/5 overflow-hidden">
-                  {getMockExternalResults(query, 5).map((result) => (
-                    <ExternalResultCard key={result.id} result={result} />
-                  ))}
-                </div>
-                <p className="text-[10px] text-muted/50 px-5 mt-2">
-                  These results come from Yelp and Google and haven&apos;t been vetted by your network.
-                </p>
-              </div>
-            )}
-          </>
-        ) : allRecs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 px-8 text-center">
-            <p className="text-sm text-muted">No recommendations yet.</p>
-            <p className="text-xs text-muted/60 mt-1">Be the first to share one!</p>
-          </div>
         ) : (
           <>
-            <Section icon={Users} label="From your people" badge="Most trusted" badgeStyle="bg-sage text-white" recs={fromYourPeople} isTrusted onCardClick={setSelectedId} />
-            <Section icon={Users} label="From the network" recs={allOthers} onCardClick={setSelectedId} />
-            <Section icon={TrendingUp} label="Most loved" recs={popularNearby} onCardClick={setSelectedId} />
+            {/* People section — above recs when there are matches */}
+            {showPeople && (
+              <div className="mb-5">
+                <div className="flex items-center gap-2 px-4 mb-2">
+                  <Users size={14} className="text-charcoal" />
+                  <h3 className="text-[13px] font-bold tracking-wide uppercase text-charcoal">People</h3>
+                </div>
+                <div className="mx-4 bg-white rounded-2xl shadow-sm shadow-black/5 divide-y divide-black/5 overflow-hidden">
+                  {peopleResults.map((person) => (
+                    <PersonRow
+                      key={person.id}
+                      person={person}
+                      friendIds={friendIds}
+                      sentRequestIds={sentRequestIds}
+                      onAddFriend={() => sendFriendRequest(person.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Rec results */}
+            {isFiltered ? (
+              <>
+                <FlatResults recs={filteredRecs} onCardClick={setSelectedId} showFallback={showFallback} />
+
+                {showFallback && (
+                  <div className="mb-5 mt-2">
+                    <div className="flex items-center gap-2 px-4 mb-2">
+                      <h3 className="text-[13px] font-bold tracking-wide uppercase text-muted">You might also like</h3>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/6 text-muted/70 ml-auto">
+                        via Yelp &amp; Google
+                      </span>
+                    </div>
+                    <div className="mx-4 bg-white rounded-2xl shadow-sm shadow-black/5 divide-y divide-black/5 overflow-hidden">
+                      {getMockExternalResults(query, 5).map((result) => (
+                        <ExternalResultCard key={result.id} result={result} />
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-muted/50 px-5 mt-2">
+                      These results come from Yelp and Google and haven&apos;t been vetted by your network.
+                    </p>
+                  </div>
+                )}
+              </>
+            ) : allRecs.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 px-8 text-center">
+                <p className="text-sm text-muted">No recommendations yet.</p>
+                <p className="text-xs text-muted/60 mt-1">Be the first to share one!</p>
+              </div>
+            ) : (
+              <>
+                <Section icon={Users} label="From your people" badge="Most trusted" badgeStyle="bg-sage text-white" recs={fromYourPeople} isTrusted onCardClick={setSelectedId} />
+                <Section icon={Users} label="From the network" recs={allOthers} onCardClick={setSelectedId} />
+                <Section icon={TrendingUp} label="Most loved" recs={popularNearby} onCardClick={setSelectedId} />
+              </>
+            )}
           </>
         )}
       </div>
