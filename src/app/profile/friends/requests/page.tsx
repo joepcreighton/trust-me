@@ -65,16 +65,24 @@ export default function FriendRequestsPage() {
   async function accept(id: string) {
     setActing(id);
     const supabase = createClient();
-    await supabase.from("friendships").update({ status: "accepted" }).eq("id", id);
-    setRequests((prev) => prev.filter((r) => r.id !== id));
+    const { error } = await supabase.from("friendships").update({ status: "accepted" }).eq("id", id);
+    if (!error) {
+      setRequests((prev) => prev.filter((r) => r.id !== id));
+    } else {
+      console.error("Failed to accept friend request:", error);
+    }
     setActing(null);
   }
 
   async function decline(id: string) {
     setActing(id);
     const supabase = createClient();
-    await supabase.from("friendships").delete().eq("id", id);
-    setRequests((prev) => prev.filter((r) => r.id !== id));
+    const { error } = await supabase.from("friendships").delete().eq("id", id);
+    if (!error) {
+      setRequests((prev) => prev.filter((r) => r.id !== id));
+    } else {
+      console.error("Failed to decline friend request:", error);
+    }
     setActing(null);
   }
 

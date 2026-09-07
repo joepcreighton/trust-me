@@ -27,6 +27,7 @@ export default function UserProfilePage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [addingFriend, setAddingFriend] = useState(false);
+  const [friendError, setFriendError] = useState<string | null>(null);
 
   useEffect(() => {
     const supabase = createClient();
@@ -69,24 +70,40 @@ export default function UserProfilePage() {
   }, [id]);
 
   async function handleFriendAction() {
-    if (!currentUserId) return;
+    setFriendError(null);
     setAddingFriend(true);
     const supabase = createClient();
 
+    // Get auth user directly — don't rely on currentUserId state (stale closure risk)
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) {
+      setFriendError("You must be signed in to do that.");
+      setAddingFriend(false);
+      return;
+    }
+
     if (friendStatus === "pending_received") {
-      await supabase
+      const { error } = await supabase
         .from("friendships")
         .update({ status: "accepted" })
         .or(`user_a.eq.${id},user_b.eq.${id}`);
-      setFriendStatus("friends");
+      if (error) {
+        setFriendError("Couldn't accept the request. Please try again.");
+      } else {
+        setFriendStatus("friends");
+      }
     } else {
-      await supabase.from("friendships").insert({
-        user_a: currentUserId,
+      const { error } = await supabase.from("friendships").insert({
+        user_a: authUser.id,
         user_b: id,
         status: "pending",
-        requested_by: currentUserId,
+        requested_by: authUser.id,
       });
-      setFriendStatus("pending_sent");
+      if (error) {
+        setFriendError("Couldn't send the request. Please try again.");
+      } else {
+        setFriendStatus("pending_sent");
+      }
     }
 
     setAddingFriend(false);
@@ -178,6 +195,10 @@ export default function UserProfilePage() {
             )
           )}
         </div>
+
+        {friendError && (
+          <p className="mt-2 text-xs text-rose-500 text-right">{friendError}</p>
+        )}
 
         {profile.bio && (
           <p className="mt-3 text-sm text-charcoal/75 leading-relaxed">{profile.bio}</p>

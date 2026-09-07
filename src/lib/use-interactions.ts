@@ -66,11 +66,13 @@ export function useInteractions() {
       const has = arr.includes(id);
       const next = has ? arr.filter((x) => x !== id) : [...arr, id];
 
-      if (has) {
-        supabase.from(table).delete().eq("user_id", authUser.id).eq("recommendation_id", id).then(() => {});
-      } else {
-        supabase.from(table).insert({ user_id: authUser.id, recommendation_id: id }).then(() => {});
-      }
+      const call = has
+        ? supabase.from(table).delete().eq("user_id", authUser.id).eq("recommendation_id", id)
+        : supabase.from(table).insert({ user_id: authUser.id, recommendation_id: id });
+
+      call.then(({ error }) => {
+        if (error) console.error(`Failed to ${has ? "remove" : "add"} ${type}:`, error);
+      });
 
       return { ...prev, [type]: next };
     });
@@ -82,7 +84,12 @@ export function useInteractions() {
 
     setInteractions((prev) => {
       if (prev.vouches.includes(recId)) return prev;
-      supabase.from("vouches").insert({ user_id: authUser.id, recommendation_id: recId }).then(() => {});
+      supabase
+        .from("vouches")
+        .insert({ user_id: authUser.id, recommendation_id: recId })
+        .then(({ error }) => {
+          if (error) console.error("Failed to add vouch:", error);
+        });
       return { ...prev, vouches: [...prev.vouches, recId] };
     });
   }
@@ -92,7 +99,14 @@ export function useInteractions() {
     const supabase = createClient();
 
     setInteractions((prev) => {
-      supabase.from("vouches").delete().eq("user_id", authUser.id).eq("recommendation_id", recId).then(() => {});
+      supabase
+        .from("vouches")
+        .delete()
+        .eq("user_id", authUser.id)
+        .eq("recommendation_id", recId)
+        .then(({ error }) => {
+          if (error) console.error("Failed to remove vouch:", error);
+        });
       return { ...prev, vouches: prev.vouches.filter((id) => id !== recId) };
     });
   }
@@ -100,15 +114,20 @@ export function useInteractions() {
   // chain_source stored separately; vouchChains local display removed
   function addVouchChain(_recId: string, _chain: string[]) {}
 
-  function addDisagreement(recId: string, comment: string) {
+  async function addDisagreement(recId: string, comment: string) {
     if (!authUser) return;
     const supabase = createClient();
 
-    supabase.from("disagreements").insert({
+    const { error } = await supabase.from("disagreements").insert({
       user_id: authUser.id,
       recommendation_id: recId,
       comment,
-    }).then(() => {});
+    });
+
+    if (error) {
+      console.error("Failed to post disagreement:", error);
+      return;
+    }
 
     setInteractions((prev) => {
       const existing = prev.disagreements[recId] ?? [];
