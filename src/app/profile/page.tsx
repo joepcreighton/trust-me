@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Sparkles, MessageSquare, Settings, Lock, HeartPulse, Home, Dumbbell, PawPrint, Circle, Handshake, Bookmark, MapPin, Check } from "lucide-react";
+import { ChevronDown, ChevronRight, Sparkles, MessageSquare, Settings, Lock, HeartPulse, Home, Dumbbell, PawPrint, Circle, Handshake, Bookmark, MapPin, Check } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { Ask, Category, Recommendation } from "@/lib/mock-data";
 import type { DbAsk, DbRecommendation } from "@/lib/db-types";
@@ -176,11 +176,34 @@ export default function ProfilePage() {
   const [myAsks, setMyAsks] = useState<Ask[]>([]);
   const [editOpen, setEditOpen] = useState(false);
   const [savedToast, setSavedToast] = useState(false);
+  const [friendCount, setFriendCount] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
 
   const { userRecs } = useUserRecs();
   const { profile } = useUserProfile();
   const { interactions } = useInteractions();
   const { settings } = useSettings();
+
+  useEffect(() => {
+    if (!currentUser.id) return;
+    const supabase = createClient();
+    Promise.all([
+      supabase
+        .from("friendships")
+        .select("id", { count: "exact", head: true })
+        .or(`user_a.eq.${currentUser.id},user_b.eq.${currentUser.id}`)
+        .eq("status", "accepted"),
+      supabase
+        .from("friendships")
+        .select("id", { count: "exact", head: true })
+        .or(`user_a.eq.${currentUser.id},user_b.eq.${currentUser.id}`)
+        .eq("status", "pending")
+        .neq("requested_by", currentUser.id),
+    ]).then(([{ count: fc }, { count: pc }]) => {
+      setFriendCount(fc ?? 0);
+      setPendingCount(pc ?? 0);
+    });
+  }, [currentUser.id]);
 
   useEffect(() => {
     if (!currentUser.id) return;
@@ -278,12 +301,15 @@ export default function ProfilePage() {
         <div className="flex items-center justify-center gap-8 mt-5">
           <button
             onClick={() => router.push("/profile/friends")}
-            className="flex flex-col items-center gap-0.5 group"
+            className="flex flex-col items-center gap-0.5 group relative"
           >
             <span className="font-display text-[1.5rem] text-charcoal leading-tight group-hover:text-sage transition-colors">
-              0
+              {friendCount}
             </span>
             <span className="text-[11px] text-muted leading-tight">friends</span>
+            {pendingCount > 0 && (
+              <span className="absolute -top-1 -right-2 w-2.5 h-2.5 bg-sage rounded-full ring-2 ring-cream" />
+            )}
           </button>
           <div className="w-px h-8 bg-black/8" />
           <div className="flex flex-col items-center gap-0.5">
@@ -301,6 +327,20 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* ── Pending friend requests banner ──────────────────────────── */}
+      {pendingCount > 0 && (
+        <button
+          onClick={() => router.push("/profile/friends/requests")}
+          className="mx-4 mb-3 w-[calc(100%-2rem)] flex items-center gap-3 bg-sage text-white rounded-2xl px-4 py-3 active:scale-[0.99] transition-transform shadow-sm shadow-sage/20"
+        >
+          <span className="w-2 h-2 rounded-full bg-white/80 flex-shrink-0" />
+          <p className="text-sm font-semibold flex-1 text-left">
+            {pendingCount === 1 ? "1 friend request" : `${pendingCount} friend requests`}
+          </p>
+          <ChevronRight size={16} className="flex-shrink-0 opacity-80" />
+        </button>
+      )}
 
       {/* ── Privacy banner ─────────────────────────────────────────────── */}
       {settings.profileVisibility === "friends" && (

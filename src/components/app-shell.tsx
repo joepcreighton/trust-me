@@ -9,6 +9,7 @@ import { useUserRecs } from "@/lib/user-recs-context";
 import { UIContext } from "@/lib/ui-context";
 import { RecommendSheet } from "./recommend-sheet";
 import { SplashScreen } from "./splash-screen";
+import { createClient } from "@/lib/supabase/client";
 import type { Recommendation } from "@/lib/mock-data";
 
 const LEFT_TABS = [
@@ -31,9 +32,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [actionSheetOpen, setActionSheetOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [showSplash, setShowSplash] = useState(true);
+  const [pendingRequests, setPendingRequests] = useState(0);
 
   // Auth/onboarding routes render without the app shell
   const isBypass = SHELL_BYPASS.some((p) => pathname.startsWith(p));
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return;
+      supabase
+        .from("friendships")
+        .select("id", { count: "exact", head: true })
+        .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
+        .eq("status", "pending")
+        .neq("requested_by", user.id)
+        .then(({ count }) => setPendingRequests(count ?? 0));
+    });
+  }, [pathname]);
 
   const openRecommendSheet = useCallback(() => setSheetOpen(true), []);
 
@@ -57,7 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
 
-  function renderTab({ href, label, Icon }: { href: string; label: string; Icon: React.ElementType }) {
+  function renderTab({ href, label, Icon, dot }: { href: string; label: string; Icon: React.ElementType; dot?: boolean }) {
     const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
     return (
       <Link
@@ -68,7 +84,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           isActive ? "text-sage" : "text-muted"
         )}
       >
-        <Icon size={22} strokeWidth={isActive ? 2 : 1.5} />
+        <div className="relative">
+          <Icon size={22} strokeWidth={isActive ? 2 : 1.5} />
+          {dot && (
+            <span className="absolute -top-1 -right-1 w-2 h-2 bg-sage rounded-full ring-2 ring-card" />
+          )}
+        </div>
         <span className="text-[10px] font-medium leading-none">{label}</span>
       </Link>
     );
@@ -118,7 +139,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <span className="text-[10px] font-medium leading-none mt-1.5 text-muted">Share</span>
                 </button>
 
-                {RIGHT_TABS.map(renderTab)}
+                {RIGHT_TABS.map((tab) =>
+                  renderTab(tab.href === "/profile" ? { ...tab, dot: pendingRequests > 0 } : tab)
+                )}
               </div>
             </nav>
           </div>
