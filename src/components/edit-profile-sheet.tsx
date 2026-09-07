@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Camera, Search, Check, ChevronDown } from "lucide-react";
+import { X, Camera, Search, Check, ChevronDown, Loader2 } from "lucide-react";
+import imageCompression from "browser-image-compression";
 import {
   DndContext,
   closestCenter,
@@ -19,10 +20,12 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { useUserProfile, type Gender } from "@/lib/user-profile-context";
+import { createClient } from "@/lib/supabase/client";
 
 // ─── constants ────────────────────────────────────────────────────────────────
 
 const BIO_LIMIT = 150;
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
 const DEFAULT_AVATAR = "https://i.pravatar.cc/150?u=placeholder";
 
@@ -37,9 +40,9 @@ const AVAILABLE_CITIES = [
 ];
 
 const GENDER_OPTIONS: { value: Gender; label: string }[] = [
-  { value: "woman",            label: "Woman" },
-  { value: "man",              label: "Man" },
-  { value: "non-binary",       label: "Non-binary" },
+  { value: "woman",             label: "Woman" },
+  { value: "man",               label: "Man" },
+  { value: "non-binary",        label: "Non-binary" },
   { value: "prefer-not-to-say", label: "Prefer not to say" },
 ];
 
@@ -94,6 +97,7 @@ function SortableCityChip({
       )}
       {city}
       <button
+        type="button"
         onClick={(e) => { e.stopPropagation(); onRemove(city); }}
         onPointerDown={(e) => e.stopPropagation()}
         className={cn(
@@ -127,6 +131,10 @@ export function EditProfileSheet({ isOpen, onClose, onSaved }: EditProfileSheetP
   const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [citySearch, setCitySearch] = useState("");
 
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const citySearchRef = useRef<HTMLInputElement>(null);
 
@@ -145,7 +153,6 @@ export function EditProfileSheet({ isOpen, onClose, onSaved }: EditProfileSheetP
     }
   }
 
-  // Sync local state from context when sheet opens
   useEffect(() => {
     if (isOpen) {
       setLocalAvatar(profile.avatar);
@@ -154,33 +161,77 @@ export function EditProfileSheet({ isOpen, onClose, onSaved }: EditProfileSheetP
       setLocalGender(profile.gender);
       setShowCityDropdown(false);
       setCitySearch("");
+      setAvatarError(null);
     }
-  }, [isOpen]); // intentionally only on open, not on every profile change
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Block body scroll while open
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [isOpen]);
 
-  // Auto-focus city search when dropdown opens
   useEffect(() => {
     if (showCityDropdown) {
       setTimeout(() => citySearchRef.current?.focus(), 80);
     }
   }, [showCityDropdown]);
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const result = ev.target?.result;
-      if (typeof result === "string") setLocalAvatar(result);
-    };
-    reader.readAsDataURL(file);
-    // Reset input so same file can be re-selected
     e.target.value = "";
+    if (!file) return;
+
+    if (file.size > MAX_AVATAR_BYTES) {
+      setAvatarError("Photo must be under 5 MB");
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      setAvatarError("Please choose an image file");
+      return;
+    }
+
+    setAvatarError(null);
+    setAvatarUploading(true);
+
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Compress client-side before upload
+      const compressed = await imageCompression(file, {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1200,
+        useWebWorker: true,
+      });
+
+      const ext = compressed.type.split("/")[1] ?? "jpg";
+      const newPath = `${user.id}/avatar-${Date.now()}.${ext}`;
+
+      // Delete existing avatar files for this user (housekeeping)
+      const { data: existing } = await supabase.storage.from("avatars").list(user.id);
+      if (existing && existing.length > 0) {
+        await supabase.storage
+          .from("avatars")
+          .remove(existing.map((f) => `${user.id}/${f.name}`));
+      }
+
+      const { data, error } = await supabase.storage
+        .from("avatars")
+        .upload(newPath, compressed, { contentType: compressed.type });
+
+      if (error) {
+        setAvatarError("Upload failed — try again");
+        return;
+      }
+
+      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(data.path);
+      setLocalAvatar(urlData.publicUrl);
+    } catch {
+      setAvatarError("Upload failed — try again");
+    } finally {
+      setAvatarUploading(false);
+    }
   }
 
   function addCity(city: string) {
@@ -195,13 +246,15 @@ export function EditProfileSheet({ isOpen, onClose, onSaved }: EditProfileSheetP
     setLocalCities((prev) => prev.filter((c) => c !== city));
   }
 
-  function handleSave() {
-    updateProfile({
+  async function handleSave() {
+    setSaving(true);
+    await updateProfile({
       avatar: localAvatar,
       bio: localBio.trim(),
       cities: localCities,
       gender: localGender,
     });
+    setSaving(false);
     onSaved();
     onClose();
   }
@@ -216,7 +269,6 @@ export function EditProfileSheet({ isOpen, onClose, onSaved }: EditProfileSheetP
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className={cn(
           "fixed inset-0 z-[55] bg-black/40 transition-opacity duration-300",
@@ -226,7 +278,6 @@ export function EditProfileSheet({ isOpen, onClose, onSaved }: EditProfileSheetP
         aria-hidden="true"
       />
 
-      {/* Sheet */}
       <div
         className={cn(
           "fixed inset-0 z-[60] bg-cream flex flex-col",
@@ -235,9 +286,9 @@ export function EditProfileSheet({ isOpen, onClose, onSaved }: EditProfileSheetP
           isOpen ? "translate-y-0" : "translate-y-full"
         )}
       >
-        {/* Header */}
         <div className="flex-shrink-0 flex items-center justify-between px-5 pt-14 pb-4 border-b border-black/8">
           <button
+            type="button"
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/8 transition-colors text-muted"
             aria-label="Cancel"
@@ -248,7 +299,6 @@ export function EditProfileSheet({ isOpen, onClose, onSaved }: EditProfileSheetP
           <div className="w-8" />
         </div>
 
-        {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-5 py-6 space-y-8">
 
           {/* ── Avatar ── */}
@@ -260,32 +310,43 @@ export function EditProfileSheet({ isOpen, onClose, onSaved }: EditProfileSheetP
                 alt="Profile photo"
                 className="w-24 h-24 rounded-full object-cover ring-4 ring-sage-light"
               />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"
-                aria-label="Change photo"
-              >
-                <Camera size={22} className="text-white" strokeWidth={1.75} />
-              </button>
+              {avatarUploading && (
+                <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
+                  <Loader2 size={22} className="text-white animate-spin" />
+                </div>
+              )}
+              {!avatarUploading && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 active:opacity-100 transition-opacity"
+                  aria-label="Change photo"
+                >
+                  <Camera size={22} className="text-white" strokeWidth={1.75} />
+                </button>
+              )}
             </div>
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp,image/gif"
               className="hidden"
               onChange={handleFileChange}
             />
             <div className="flex items-center gap-4">
               <button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="text-sm font-semibold text-sage"
+                disabled={avatarUploading}
+                className="text-sm font-semibold text-sage disabled:opacity-50"
               >
-                Change photo
+                {avatarUploading ? "Uploading…" : "Change photo"}
               </button>
-              {localAvatar !== DEFAULT_AVATAR && (
+              {localAvatar !== DEFAULT_AVATAR && !avatarUploading && (
                 <>
                   <span className="text-black/20">·</span>
                   <button
+                    type="button"
                     onClick={() => setLocalAvatar(DEFAULT_AVATAR)}
                     className="text-sm text-muted"
                   >
@@ -294,6 +355,9 @@ export function EditProfileSheet({ isOpen, onClose, onSaved }: EditProfileSheetP
                 </>
               )}
             </div>
+            {avatarError && (
+              <p className="text-xs text-rose-500 text-center">{avatarError}</p>
+            )}
           </section>
 
           {/* ── Bio ── */}
@@ -321,9 +385,7 @@ export function EditProfileSheet({ isOpen, onClose, onSaved }: EditProfileSheetP
               </div>
             </div>
             {overLimit && (
-              <p className="text-xs text-rose-500 mt-1.5">
-                Over the limit — consider trimming.
-              </p>
+              <p className="text-xs text-rose-500 mt-1.5">Over the limit — consider trimming.</p>
             )}
           </section>
 
@@ -332,11 +394,8 @@ export function EditProfileSheet({ isOpen, onClose, onSaved }: EditProfileSheetP
             <label className="block text-xs font-bold text-charcoal uppercase tracking-wide mb-1.5">
               Where you spend time
             </label>
-            <p className="text-xs text-muted mb-3">
-              First city is your primary location.
-            </p>
+            <p className="text-xs text-muted mb-3">First city is your primary location.</p>
 
-            {/* Sortable chips */}
             {localCities.length > 0 && (
               <DndContext
                 sensors={sensors}
@@ -358,9 +417,9 @@ export function EditProfileSheet({ isOpen, onClose, onSaved }: EditProfileSheetP
               </DndContext>
             )}
 
-            {/* Add location button / dropdown */}
             {!showCityDropdown ? (
               <button
+                type="button"
                 onClick={() => setShowCityDropdown(true)}
                 className="flex items-center gap-1.5 text-sm font-semibold text-sage py-1"
               >
@@ -370,7 +429,6 @@ export function EditProfileSheet({ isOpen, onClose, onSaved }: EditProfileSheetP
               </button>
             ) : (
               <div className="bg-white rounded-2xl border border-black/10 overflow-hidden shadow-sm">
-                {/* Search */}
                 <div className="flex items-center gap-2 px-3 py-2.5 border-b border-black/8">
                   <Search size={15} className="text-muted flex-shrink-0" strokeWidth={1.75} />
                   <input
@@ -382,18 +440,19 @@ export function EditProfileSheet({ isOpen, onClose, onSaved }: EditProfileSheetP
                     className="flex-1 text-sm text-charcoal bg-transparent focus:outline-none placeholder:text-muted/50"
                   />
                   <button
+                    type="button"
                     onClick={() => { setShowCityDropdown(false); setCitySearch(""); }}
                     className="text-muted"
                   >
                     <X size={14} />
                   </button>
                 </div>
-                {/* City list */}
                 <div className="max-h-48 overflow-y-auto">
                   {filteredCities.length > 0 ? (
                     filteredCities.map((city) => (
                       <button
                         key={city}
+                        type="button"
                         onClick={() => addCity(city)}
                         className="w-full text-left px-4 py-3 text-sm text-charcoal hover:bg-sage-light/50 transition-colors border-b border-black/5 last:border-0"
                       >
@@ -417,6 +476,7 @@ export function EditProfileSheet({ isOpen, onClose, onSaved }: EditProfileSheetP
               {GENDER_OPTIONS.map(({ value, label }) => (
                 <button
                   key={value}
+                  type="button"
                   onClick={() => setLocalGender(value)}
                   className={cn(
                     "flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-sm font-medium transition-all",
@@ -437,23 +497,22 @@ export function EditProfileSheet({ isOpen, onClose, onSaved }: EditProfileSheetP
             </p>
           </section>
 
-          {/* Bottom spacer so content clears the sticky footer */}
           <div className="h-4" />
         </div>
 
-        {/* Sticky footer */}
         <div className="flex-shrink-0 px-5 pb-10 pt-3 border-t border-black/8 bg-cream">
           <button
+            type="button"
             onClick={handleSave}
-            disabled={overLimit}
+            disabled={overLimit || avatarUploading || saving}
             className={cn(
-              "w-full h-12 rounded-full font-semibold text-sm transition-all",
-              overLimit
+              "w-full h-12 rounded-full font-semibold text-sm transition-all flex items-center justify-center gap-2",
+              overLimit || avatarUploading || saving
                 ? "bg-black/10 text-muted cursor-not-allowed"
-                : "bg-sage text-white shadow-sm shadow-sage/30 active:scale-[0.98]"
+                : "bg-sage text-white shadow-sm shadow-sage/30 active:opacity-75"
             )}
           >
-            Save changes
+            {saving ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : "Save changes"}
           </button>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import type { Category, Recommendation } from "@/lib/mock-data";
 import type { DbRecommendation } from "@/lib/db-types";
+import { cityToLatLng } from "@/lib/city-coords";
 import { useCurrentUser } from "@/lib/auth-context";
 import { useUserRecs } from "@/lib/user-recs-context";
 import { useInteractions } from "@/lib/use-interactions";
@@ -156,6 +157,7 @@ export default function ExplorePage() {
         {/* Map */}
         <MapView
           recs={filteredRecs}
+          center={cityToLatLng(currentUser.cities?.[0])}
           vouchChainCounts={{}}
           onRecClick={setSelectedId}
           onSwitchToList={() => {}}

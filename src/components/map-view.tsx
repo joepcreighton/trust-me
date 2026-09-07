@@ -5,10 +5,10 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Heart, Handshake } from "lucide-react";
-import { Recommendation, avaLocation, Category } from "@/lib/mock-data";
+import type { Recommendation, Category } from "@/lib/mock-data";
+import type { LatLng } from "@/lib/city-coords";
+import { DEFAULT_CENTER } from "@/lib/city-coords";
 import { cn } from "@/lib/utils";
-
-// ─── category colors ──────────────────────────────────────────────────────────
 
 const CATEGORY_COLOR: Record<Category, string> = {
   Beauty:  "#db2777",
@@ -18,8 +18,6 @@ const CATEGORY_COLOR: Record<Category, string> = {
   Pets:    "#65a30d",
   Other:   "#6b7280",
 };
-
-// ─── custom pin icon ──────────────────────────────────────────────────────────
 
 function makePinIcon(color: string, badge: number | string, trusted: boolean) {
   const badgeStr = typeof badge === "number" && badge > 9 ? "9+" : String(badge);
@@ -42,8 +40,6 @@ function makePinIcon(color: string, badge: number | string, trusted: boolean) {
   });
 }
 
-// ─── recenter helper ──────────────────────────────────────────────────────────
-
 function MapCenter({ lat, lng }: { lat: number; lng: number }) {
   const map = useMap();
   const prev = useRef<string>("");
@@ -57,24 +53,22 @@ function MapCenter({ lat, lng }: { lat: number; lng: number }) {
   return null;
 }
 
-// ─── props ────────────────────────────────────────────────────────────────────
-
 interface MapViewProps {
   recs: Recommendation[];
+  center?: LatLng;
   vouchChainCounts: Record<string, number>;
   onRecClick: (id: string) => void;
   onSwitchToList?: () => void;
 }
 
-// ─── component ────────────────────────────────────────────────────────────────
-
-export default function MapView({ recs, vouchChainCounts, onRecClick, onSwitchToList }: MapViewProps) {
+export default function MapView({ recs, center, vouchChainCounts, onRecClick, onSwitchToList }: MapViewProps) {
   const mappable = recs.filter((r) => r.lat != null && r.lng != null);
+  const c = center ?? DEFAULT_CENTER;
 
   return (
     <div className="relative mx-4 rounded-2xl overflow-hidden" style={{ height: "calc(100dvh - 240px)" }}>
       <MapContainer
-        center={[avaLocation.lat, avaLocation.lng]}
+        center={[c.lat, c.lng]}
         zoom={13}
         style={{ height: "100%", width: "100%" }}
         zoomControl={false}
@@ -84,29 +78,23 @@ export default function MapView({ recs, vouchChainCounts, onRecClick, onSwitchTo
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         />
-        <MapCenter lat={avaLocation.lat} lng={avaLocation.lng} />
+        <MapCenter lat={c.lat} lng={c.lng} />
 
         {mappable.map((rec) => {
           const chainCount = vouchChainCounts[rec.id] ?? 0;
           const trusted = chainCount >= 1;
-          const color = CATEGORY_COLOR[rec.category];
+          const color = CATEGORY_COLOR[rec.category] ?? "#6b7280";
           const badge = rec.vouches.length;
           const icon = makePinIcon(color, badge, trusted);
 
           return (
-            <Marker
-              key={rec.id}
-              position={[rec.lat!, rec.lng!]}
-              icon={icon}
-            >
+            <Marker key={rec.id} position={[rec.lat!, rec.lng!]} icon={icon}>
               <Popup closeButton={false} className="trust-me-popup">
                 <div className="w-52 font-sans">
                   <p className="font-semibold text-[13px] text-gray-900 leading-tight">
                     {rec.businessName}
                   </p>
-                  <p className="text-[11px] text-gray-500 mt-0.5 truncate">
-                    {rec.city}
-                  </p>
+                  <p className="text-[11px] text-gray-500 mt-0.5 truncate">{rec.city}</p>
                   <p className="text-[11px] text-gray-600 mt-1.5 line-clamp-2 leading-relaxed">
                     {rec.blurb}
                   </p>
@@ -119,9 +107,10 @@ export default function MapView({ recs, vouchChainCounts, onRecClick, onSwitchTo
                       {rec.vouches.length}
                     </span>
                     <button
+                      type="button"
                       onClick={() => onRecClick(rec.id)}
                       style={{ backgroundColor: "#6B8F71" }}
-                      className="text-white text-[11px] font-semibold px-3 py-1 rounded-full"
+                      className="text-white text-[11px] font-semibold px-3 py-1 rounded-full active:opacity-75"
                     >
                       View rec
                     </button>
@@ -133,23 +122,21 @@ export default function MapView({ recs, vouchChainCounts, onRecClick, onSwitchTo
         })}
       </MapContainer>
 
-      {/* View List button — only shown when a handler is provided */}
       {onSwitchToList && (
         <button
+          type="button"
           onClick={onSwitchToList}
           className={cn(
             "absolute bottom-4 right-4 z-[1000]",
             "flex items-center gap-1.5 px-4 py-2.5 rounded-full",
             "bg-white shadow-lg shadow-black/20 border border-black/8",
-            "text-sm font-semibold text-gray-800",
-            "active:scale-95 transition-transform"
+            "text-sm font-semibold text-gray-800 active:opacity-75"
           )}
         >
           ☰ View List
         </button>
       )}
 
-      {/* Attribution small */}
       <div className="absolute bottom-2 left-2 z-[1000] text-[9px] text-gray-400">
         © OpenStreetMap
       </div>

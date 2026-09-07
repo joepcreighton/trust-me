@@ -4,9 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import {
   ArrowLeft,
   X,
-  Search,
+  MapPin,
   Camera,
-  ChevronDown,
   ArrowRight,
   Sparkles,
   HeartPulse,
@@ -17,11 +16,14 @@ import {
   Globe,
   Phone,
   Loader2,
+  Upload,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import imageCompression from "browser-image-compression";
 import { cn } from "@/lib/utils";
 import { Category, Recommendation } from "@/lib/mock-data";
 import { useCurrentUser } from "@/lib/auth-context";
+import { cityToLatLng } from "@/lib/city-coords";
 import { createClient } from "@/lib/supabase/client";
 
 // ─── types ──────────────────────────────────────────────────────────────────
@@ -36,8 +38,24 @@ interface FormState {
   why: string;
   photo: string | null;
   city: string;
+  address: string;
+  lat: number | null;
+  lng: number | null;
+  mapboxPlaceId: string;
   website: string;
   phone: string;
+}
+
+interface MapboxSuggestion {
+  mapbox_id: string;
+  name: string;
+  full_address?: string;
+  place_formatted?: string;
+  context?: {
+    place?: { name: string };
+    district?: { name: string };
+    region?: { name: string; region_code?: string };
+  };
 }
 
 // ─── constants ───────────────────────────────────────────────────────────────
@@ -51,47 +69,52 @@ const CATEGORIES: Array<{ value: FormCategory; icon: LucideIcon }> = [
   { value: "Other",   icon: Circle },
 ];
 
-const CITIES = [
-  "New York City, NY",
-  "Los Angeles, CA",
-  "Chicago, IL",
-  "Austin, TX",
-  "Denver, CO",
-  "San Diego, CA",
-  "Online",
-];
-
 const WHY_LIMIT = 280;
 
-const CATEGORY_PHOTOS: Record<string, string[]> = {
-  Beauty: [
-    "1522337360788-8b13dee7a37e",
-    "1556228578-8c89e6adf883",
-    "1604654894610-df63bc536371",
-  ],
-  Health: [
-    "1573496359142-b8d87734a5a2",
-    "1576091160399-112ba8d25d1d",
-  ],
-  Home: [
-    "1484154218962-a197022b5858",
-  ],
-  Fitness: [
-    "1534438327276-14e5300c3a48",
-    "1506629082955-511b1aa562c8",
-    "1574680096145-d05b474e2155",
-  ],
-  Pets: [
-    "1587300003388-59208cc962cb",
-  ],
-  Other: [
-    "1519337265831-281ec6cc8514",
-    "1507679799987-c73779587ccf",
-  ],
-};
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
+async function fetchSuggestions(
+  query: string,
+  sessionToken: string,
+  biasLat?: number,
+  biasLng?: number,
+): Promise<MapboxSuggestion[]> {
+  if (!MAPBOX_TOKEN || query.length < 2) return [];
+  const params = new URLSearchParams({
+    q: query,
+    access_token: MAPBOX_TOKEN,
+    session_token: sessionToken,
+    types: "poi,address",
+    limit: "5",
+    language: "en",
+  });
+  if (biasLat != null && biasLng != null) {
+    params.set("proximity", `${biasLng},${biasLat}`);
+  }
+  try {
+    const res = await fetch(`https://api.mapbox.com/search/searchbox/v1/suggest?${params}`);
+    const json = await res.json();
+    return json.suggestions ?? [];
+  } catch {
+    return [];
+  }
+}
+
+async function retrievePlace(mapboxId: string, sessionToken: string) {
+  if (!MAPBOX_TOKEN) return null;
+  try {
+    const params = new URLSearchParams({ access_token: MAPBOX_TOKEN, session_token: sessionToken });
+    const res = await fetch(`https://api.mapbox.com/search/searchbox/v1/retrieve/${mapboxId}?${params}`);
+    const json = await res.json();
+    return json.features?.[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// Supabase-based fallback autocomplete (no Mapbox token)
 async function getBusinessSuggestions(query: string): Promise<string[]> {
   if (query.length < 2) return [];
   const supabase = createClient();
@@ -108,12 +131,6 @@ async function getBusinessSuggestions(query: string): Promise<string[]> {
   });
 }
 
-function pickRandomPhoto(category: FormCategory | null): string {
-  const pool = CATEGORY_PHOTOS[category ?? "Other"] ?? CATEGORY_PHOTOS.Other;
-  const id = pool[Math.floor(Math.random() * pool.length)];
-  return `https://images.unsplash.com/photo-${id}?auto=format&fit=crop&w=800&q=80`;
-}
-
 // ─── component ───────────────────────────────────────────────────────────────
 
 interface RecommendSheetProps {
@@ -122,61 +139,122 @@ interface RecommendSheetProps {
   onPost: (rec: Recommendation) => void;
 }
 
+const INITIAL_FORM: FormState = {
+  name: "", provider: "", category: null, why: "",
+  photo: null, city: "", address: "", lat: null, lng: null,
+  mapboxPlaceId: "", website: "", phone: "",
+};
+
 export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps) {
   const currentUser = useCurrentUser();
   const [step, setStep] = useState<Step>(1);
-  const [form, setForm] = useState<FormState>({
-    name: "",
-    provider: "",
-    category: null,
-    why: "",
-    photo: null,
-    city: "",
-    website: "",
-    phone: "",
-  });
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [form, setForm] = useState<FormState>(INITIAL_FORM);
+  const [suggestions, setSuggestions] = useState<MapboxSuggestion[] | string[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [posting, setPosting] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
-  // Reset form whenever sheet opens
+  const inputRef = useRef<HTMLInputElement>(null);
+  const sessionTokenRef = useRef<string>("");
+  const primaryCity = currentUser.cities?.[0];
+
   useEffect(() => {
     if (isOpen) {
       setStep(1);
-      setForm({ name: "", provider: "", category: null, why: "", photo: null, city: "", website: "", phone: "" });
+      setForm(INITIAL_FORM);
       setSuggestions([]);
+      setPhotoError(null);
+      // New Mapbox session per sheet open
+      sessionTokenRef.current = crypto.randomUUID();
       setTimeout(() => inputRef.current?.focus(), 350);
     }
   }, [isOpen]);
 
-  // Block body scroll while sheet is open
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
+    document.body.style.overflow = isOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
   }, [isOpen]);
 
-  function handleNameChange(val: string) {
+  async function handleNameChange(val: string) {
     setForm((f) => ({ ...f, name: val }));
-    getBusinessSuggestions(val).then(setSuggestions);
+
+    if (MAPBOX_TOKEN) {
+      setLoadingSuggestions(true);
+      const bias = primaryCity ? cityToLatLng(primaryCity) : undefined;
+      const results = await fetchSuggestions(val, sessionTokenRef.current, bias?.lat, bias?.lng);
+      setSuggestions(results);
+      setLoadingSuggestions(false);
+    } else {
+      getBusinessSuggestions(val).then(setSuggestions);
+    }
   }
 
-  function pickSuggestion(name: string) {
+  async function handlePickMapboxSuggestion(suggestion: MapboxSuggestion) {
+    setSuggestions([]);
+    setForm((f) => ({ ...f, name: suggestion.name }));
+
+    const feature = await retrievePlace(suggestion.mapbox_id, sessionTokenRef.current);
+    // Start a new session token after retrieve (per Mapbox billing rules)
+    sessionTokenRef.current = crypto.randomUUID();
+
+    if (!feature) return;
+
+    const props = feature.properties ?? {};
+    const coords = props.coordinates ?? {};
+    const context = props.context ?? suggestion.context ?? {};
+
+    setForm((f) => ({
+      ...f,
+      name: props.name ?? suggestion.name,
+      address: props.full_address ?? suggestion.full_address ?? "",
+      city: context.place?.name ?? f.city,
+      lat: coords.latitude ?? null,
+      lng: coords.longitude ?? null,
+      mapboxPlaceId: props.mapbox_id ?? suggestion.mapbox_id,
+      phone: props.metadata?.phone ?? f.phone,
+      website: props.metadata?.website ?? f.website,
+    }));
+  }
+
+  function handlePickFallbackSuggestion(name: string) {
     setForm((f) => ({ ...f, name }));
     setSuggestions([]);
   }
 
-  function addPhoto() {
-    setForm((f) => ({ ...f, photo: pickRandomPhoto(f.category) }));
-  }
+  async function handlePhotoFile(file: File) {
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoError("Image must be under 5 MB");
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      setPhotoError("Please choose an image file");
+      return;
+    }
+    if (!currentUser.id) return;
 
-  function removePhoto() {
-    setForm((f) => ({ ...f, photo: null }));
+    setPhotoError(null);
+    setPhotoUploading(true);
+    try {
+      const compressed = await imageCompression(file, {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1200,
+        useWebWorker: true,
+      });
+      const ext = compressed.type.split("/")[1] ?? "jpg";
+      const path = `${currentUser.id}/draft-${Date.now()}.${ext}`;
+      const supabase = createClient();
+      const { data, error } = await supabase.storage
+        .from("rec-photos")
+        .upload(path, compressed, { contentType: compressed.type });
+      if (error) { setPhotoError("Upload failed — try again"); return; }
+      const { data: urlData } = supabase.storage.from("rec-photos").getPublicUrl(data.path);
+      setForm((f) => ({ ...f, photo: urlData.publicUrl }));
+    } catch {
+      setPhotoError("Upload failed — try again");
+    } finally {
+      setPhotoUploading(false);
+    }
   }
 
   function canAdvance(): boolean {
@@ -187,11 +265,8 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
   }
 
   function handleNext() {
-    if (step < 4) {
-      setStep((s) => (s + 1) as Step);
-    } else {
-      handlePost();
-    }
+    if (step < 4) setStep((s) => (s + 1) as Step);
+    else handlePost();
   }
 
   async function handlePost() {
@@ -211,6 +286,10 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
         blurb: form.why.trim(),
         photo_url: form.photo || null,
         city: form.city || null,
+        address: form.address || null,
+        latitude: form.lat,
+        longitude: form.lng,
+        mapbox_place_id: form.mapboxPlaceId || null,
         website: form.website.trim() || null,
         phone: form.phone.trim() || null,
       })
@@ -228,6 +307,8 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
         category: (data.category.charAt(0).toUpperCase() + data.category.slice(1)) as Category,
         subCategory: "Other",
         city: data.city ?? "",
+        lat: data.latitude ?? undefined,
+        lng: data.longitude ?? undefined,
         blurb: data.blurb,
         photo: data.photo_url ?? undefined,
         website: data.website ?? undefined,
@@ -246,7 +327,6 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
 
   return (
     <>
-      {/* Backdrop */}
       <div
         className={cn(
           "fixed inset-0 z-40 bg-black/40 transition-opacity duration-300",
@@ -256,7 +336,6 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
         aria-hidden="true"
       />
 
-      {/* Sheet */}
       <div
         className={cn(
           "fixed bottom-0 left-1/2 -translate-x-1/2 z-50",
@@ -266,16 +345,15 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
           isOpen ? "translate-y-0" : "translate-y-full"
         )}
       >
-        {/* Drag handle */}
         <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
           <div className="w-10 h-1 bg-black/15 rounded-full" />
         </div>
 
-        {/* Sheet header */}
         <div className="px-4 pt-2 pb-3 flex-shrink-0">
           <div className="flex items-center justify-between">
             {step > 1 ? (
               <button
+                type="button"
                 onClick={() => setStep((s) => (s - 1) as Step)}
                 className="p-1 -ml-1 text-muted hover:text-charcoal transition-colors"
                 aria-label="Go back"
@@ -285,14 +363,11 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
             ) : (
               <div className="w-7" />
             )}
-
             <div className="text-center">
-              <p className="text-xs text-muted font-medium">
-                Step {step} of 4
-              </p>
+              <p className="text-xs text-muted font-medium">Step {step} of 4</p>
             </div>
-
             <button
+              type="button"
               onClick={onClose}
               className="p-1 -mr-1 text-muted hover:text-charcoal transition-colors"
               aria-label="Close"
@@ -301,7 +376,6 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
             </button>
           </div>
 
-          {/* Progress bar */}
           <div className="mt-3 h-1 bg-black/8 rounded-full overflow-hidden">
             <div
               className="h-full bg-sage rounded-full transition-all duration-400"
@@ -310,17 +384,19 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
           </div>
         </div>
 
-        {/* Step content (scrollable) */}
         <div className="flex-1 overflow-y-auto px-5 pb-4">
           {step === 1 && (
             <StepName
               name={form.name}
               provider={form.provider}
               suggestions={suggestions}
+              loadingSuggestions={loadingSuggestions}
+              hasMapbox={Boolean(MAPBOX_TOKEN)}
               inputRef={inputRef}
               onChange={handleNameChange}
               onProviderChange={(v) => setForm((f) => ({ ...f, provider: v }))}
-              onPickSuggestion={pickSuggestion}
+              onPickMapboxSuggestion={handlePickMapboxSuggestion}
+              onPickFallbackSuggestion={handlePickFallbackSuggestion}
             />
           )}
           {step === 2 && (
@@ -342,8 +418,10 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
               city={form.city}
               website={form.website}
               phone={form.phone}
-              onAddPhoto={addPhoto}
-              onRemovePhoto={removePhoto}
+              photoUploading={photoUploading}
+              photoError={photoError}
+              onPickPhotoFile={handlePhotoFile}
+              onRemovePhoto={() => setForm((f) => ({ ...f, photo: null }))}
               onCityChange={(city) => setForm((f) => ({ ...f, city }))}
               onWebsiteChange={(website) => setForm((f) => ({ ...f, website }))}
               onPhoneChange={(phone) => setForm((f) => ({ ...f, phone }))}
@@ -351,15 +429,15 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
           )}
         </div>
 
-        {/* Footer action */}
         <div className="px-5 pb-8 pt-3 flex-shrink-0 border-t border-black/5">
           <button
+            type="button"
             onClick={handleNext}
-            disabled={!canAdvance() || posting}
+            disabled={!canAdvance() || posting || photoUploading}
             className={cn(
               "w-full flex items-center justify-center gap-2",
               "h-12 rounded-full font-semibold text-sm transition-all",
-              canAdvance() && !posting
+              canAdvance() && !posting && !photoUploading
                 ? "bg-sage text-white shadow-sm shadow-sage/30 active:opacity-75"
                 : "bg-black/8 text-muted cursor-not-allowed"
             )}
@@ -367,9 +445,7 @@ export function RecommendSheet({ isOpen, onClose, onPost }: RecommendSheetProps)
             {posting ? (
               <Loader2 size={18} className="animate-spin" />
             ) : step < 4 ? (
-              <>
-                Next <ArrowRight size={16} />
-              </>
+              <>Next <ArrowRight size={16} /></>
             ) : (
               "Post →"
             )}
@@ -386,52 +462,85 @@ function StepName({
   name,
   provider,
   suggestions,
+  loadingSuggestions,
+  hasMapbox,
   inputRef,
   onChange,
   onProviderChange,
-  onPickSuggestion,
+  onPickMapboxSuggestion,
+  onPickFallbackSuggestion,
 }: {
   name: string;
   provider: string;
-  suggestions: string[];
+  suggestions: MapboxSuggestion[] | string[];
+  loadingSuggestions: boolean;
+  hasMapbox: boolean;
   inputRef: React.RefObject<HTMLInputElement | null>;
   onChange: (v: string) => void;
   onProviderChange: (v: string) => void;
-  onPickSuggestion: (v: string) => void;
+  onPickMapboxSuggestion: (s: MapboxSuggestion) => void;
+  onPickFallbackSuggestion: (name: string) => void;
 }) {
+  const mapboxSuggestions = hasMapbox ? (suggestions as MapboxSuggestion[]) : [];
+  const fallbackSuggestions = !hasMapbox ? (suggestions as string[]) : [];
+
   return (
     <div className="pt-1">
       <h2 className="font-display text-2xl text-charcoal leading-snug">
         Who or what are you recommending?
       </h2>
-      <p className="text-sm text-muted mt-1 mb-5">
-        A person, business, or place
-      </p>
+      <p className="text-sm text-muted mt-1 mb-5">A person, business, or place</p>
 
       <div className="relative">
         <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted">
-          <Search size={17} />
+          <MapPin size={17} />
         </div>
         <input
           ref={inputRef}
           type="text"
           value={name}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="e.g. Maria's Color Studio"
-          className="w-full pl-10 pr-4 py-3.5 rounded-2xl border border-black/10 bg-white text-charcoal text-sm placeholder:text-muted/60 focus:outline-none focus:border-sage focus:ring-2 focus:ring-sage/20 transition-all"
+          placeholder="e.g. Poppy Nails"
+          className="w-full pl-10 pr-10 py-3.5 rounded-2xl border border-black/10 bg-white text-charcoal text-sm placeholder:text-muted/60 focus:outline-none focus:border-sage focus:ring-2 focus:ring-sage/20 transition-all"
         />
+        {loadingSuggestions && (
+          <div className="absolute right-3.5 top-1/2 -translate-y-1/2">
+            <Loader2 size={15} className="animate-spin text-muted" />
+          </div>
+        )}
       </div>
 
-      {/* Autocomplete suggestions */}
-      {suggestions.length > 0 && (
+      {/* Mapbox suggestions */}
+      {mapboxSuggestions.length > 0 && (
         <div className="mt-2 rounded-2xl border border-black/8 bg-white overflow-hidden shadow-sm">
-          {suggestions.map((s, i) => (
+          {mapboxSuggestions.map((s) => (
+            <button
+              key={s.mapbox_id}
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); onPickMapboxSuggestion(s); }}
+              onTouchEnd={(e) => { e.preventDefault(); onPickMapboxSuggestion(s); }}
+              className="w-full text-left px-4 py-3 flex items-start gap-2.5 hover:bg-sage-light transition-colors border-b border-black/5 last:border-0"
+            >
+              <MapPin size={13} className="text-muted flex-shrink-0 mt-0.5" strokeWidth={1.75} />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-charcoal truncate">{s.name}</p>
+                {(s.full_address ?? s.place_formatted) && (
+                  <p className="text-xs text-muted mt-0.5 truncate">{s.full_address ?? s.place_formatted}</p>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Fallback Supabase suggestions (no Mapbox token) */}
+      {fallbackSuggestions.length > 0 && (
+        <div className="mt-2 rounded-2xl border border-black/8 bg-white overflow-hidden shadow-sm">
+          {fallbackSuggestions.map((s, i) => (
             <button
               key={i}
-              onMouseDown={(e) => {
-                e.preventDefault();
-                onPickSuggestion(s);
-              }}
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); onPickFallbackSuggestion(s); }}
               className="w-full text-left px-4 py-3 text-sm text-charcoal hover:bg-sage-light transition-colors border-b border-black/5 last:border-0"
             >
               {s}
@@ -440,13 +549,12 @@ function StepName({
         </div>
       )}
 
-      {suggestions.length === 0 && name.length >= 2 && (
+      {!loadingSuggestions && mapboxSuggestions.length === 0 && name.length >= 2 && (
         <p className="text-xs text-muted mt-3">
-          Not in our suggestions? No problem — any name works.
+          Not in suggestions? Any name works — just keep typing.
         </p>
       )}
 
-      {/* Optional service provider */}
       <div className="mt-5">
         <p className="text-xs font-semibold text-charcoal/70 uppercase tracking-wide mb-2">
           Service provider <span className="font-normal normal-case text-muted">— optional</span>
@@ -480,14 +588,13 @@ function StepCategory({
       <h2 className="font-display text-2xl text-charcoal leading-snug">
         What kind of recommendation?
       </h2>
-      <p className="text-sm text-muted mt-1 mb-6">
-        Pick the best fit
-      </p>
+      <p className="text-sm text-muted mt-1 mb-6">Pick the best fit</p>
 
       <div className="grid grid-cols-2 gap-3">
         {CATEGORIES.map(({ value, icon: Icon }) => (
           <button
             key={value}
+            type="button"
             onClick={() => onSelect(value)}
             className={cn(
               "flex items-center gap-3 px-4 py-3.5 rounded-2xl border text-sm font-medium text-left transition-all",
@@ -563,7 +670,9 @@ function StepExtras({
   city,
   website,
   phone,
-  onAddPhoto,
+  photoUploading,
+  photoError,
+  onPickPhotoFile,
   onRemovePhoto,
   onCityChange,
   onWebsiteChange,
@@ -573,36 +682,41 @@ function StepExtras({
   city: string;
   website: string;
   phone: string;
-  onAddPhoto: () => void;
+  photoUploading: boolean;
+  photoError: string | null;
+  onPickPhotoFile: (file: File) => void;
   onRemovePhoto: () => void;
   onCityChange: (v: string) => void;
   onWebsiteChange: (v: string) => void;
   onPhoneChange: (v: string) => void;
 }) {
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) onPickPhotoFile(file);
+    e.target.value = "";
+  }
+
   return (
     <div className="pt-1">
       <h2 className="font-display text-2xl text-charcoal leading-snug">
         A few last details
       </h2>
       <p className="text-sm text-muted mt-1 mb-6">
-        All optional — skip anything you'd like
+        All optional — skip anything you&apos;d like
       </p>
 
       {/* Photo */}
       <div className="mb-6">
-        <p className="text-xs font-semibold text-charcoal uppercase tracking-wide mb-3">
-          Photo
-        </p>
+        <p className="text-xs font-semibold text-charcoal uppercase tracking-wide mb-3">Photo</p>
 
         {photo ? (
           <div className="relative rounded-2xl overflow-hidden h-44">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={photo}
-              alt="Preview"
-              className="w-full h-full object-cover"
-            />
+            <img src={photo} alt="Preview" className="w-full h-full object-cover" />
             <button
+              type="button"
               onClick={onRemovePhoto}
               className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 flex items-center justify-center text-white hover:bg-black/70 transition-colors"
             >
@@ -611,45 +725,56 @@ function StepExtras({
           </div>
         ) : (
           <button
-            onClick={onAddPhoto}
-            className="w-full h-32 rounded-2xl border-2 border-dashed border-black/15 flex flex-col items-center justify-center gap-2 text-muted hover:border-sage/50 hover:text-sage hover:bg-sage-light/20 transition-all"
+            type="button"
+            onClick={() => photoInputRef.current?.click()}
+            disabled={photoUploading}
+            className="w-full h-32 rounded-2xl border-2 border-dashed border-black/15 flex flex-col items-center justify-center gap-2 text-muted hover:border-sage/50 hover:text-sage hover:bg-sage-light/20 transition-all disabled:opacity-60"
           >
-            <Camera size={24} strokeWidth={1.5} />
-            <span className="text-sm font-medium">Add a photo</span>
+            {photoUploading ? (
+              <>
+                <Loader2 size={22} className="animate-spin" />
+                <span className="text-sm font-medium">Uploading…</span>
+              </>
+            ) : (
+              <>
+                <Camera size={24} strokeWidth={1.5} />
+                <span className="text-sm font-medium">Add a photo</span>
+                <span className="text-xs text-muted/60">JPEG, PNG, WebP — max 5 MB</span>
+              </>
+            )}
           </button>
+        )}
+
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+
+        {photoError && (
+          <p className="text-xs text-rose-500 mt-2 flex items-center gap-1">
+            <Upload size={11} /> {photoError}
+          </p>
         )}
       </div>
 
       {/* City */}
       <div className="mb-6">
-        <p className="text-xs font-semibold text-charcoal uppercase tracking-wide mb-3">
-          Location
-        </p>
-
-        <div className="relative">
-          <select
-            value={city}
-            onChange={(e) => onCityChange(e.target.value)}
-            className="w-full appearance-none pl-4 pr-10 py-3.5 rounded-2xl border border-black/10 bg-white text-charcoal text-sm focus:outline-none focus:border-sage focus:ring-2 focus:ring-sage/20 transition-all cursor-pointer"
-          >
-            <option value="">No location / skip</option>
-            {CITIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <div className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-muted">
-            <ChevronDown size={16} />
-          </div>
-        </div>
+        <p className="text-xs font-semibold text-charcoal uppercase tracking-wide mb-3">Location</p>
+        <input
+          type="text"
+          value={city}
+          onChange={(e) => onCityChange(e.target.value)}
+          placeholder="City (auto-filled if you picked from suggestions)"
+          className="w-full px-4 py-3.5 rounded-2xl border border-black/10 bg-white text-charcoal text-sm placeholder:text-muted/60 focus:outline-none focus:border-sage focus:ring-2 focus:ring-sage/20 transition-all"
+        />
       </div>
 
       {/* Contact */}
       <div className="space-y-4">
-        <p className="text-xs font-semibold text-charcoal uppercase tracking-wide">
-          Contact info
-        </p>
+        <p className="text-xs font-semibold text-charcoal uppercase tracking-wide">Contact info</p>
 
         <div className="relative">
           <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted">

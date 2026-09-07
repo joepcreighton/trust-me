@@ -50,48 +50,19 @@ export function UserProfileProvider({ children }: { children: React.ReactNode })
 
   async function updateProfile(updates: Partial<UserProfile>) {
     const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-
-    let avatarUrl = updates.avatar;
-
-    // Upload data URL to storage
-    if (avatarUrl?.startsWith("data:")) {
-      const res = await fetch(avatarUrl);
-      const blob = await res.blob();
-      const ext = blob.type.split("/")[1] ?? "jpg";
-      const { data } = await supabase.storage
-        .from("avatars")
-        .upload(`${user.id}/avatar.${ext}`, blob, {
-          upsert: true,
-          contentType: blob.type,
-        });
-      if (data) {
-        const { data: urlData } = supabase.storage
-          .from("avatars")
-          .getPublicUrl(data.path);
-        avatarUrl = urlData.publicUrl;
-      }
-    }
 
     const dbUpdates: Record<string, unknown> = {};
     if (updates.bio !== undefined) dbUpdates.bio = updates.bio || null;
-    if (avatarUrl !== undefined) dbUpdates.avatar_url = avatarUrl;
+    if (updates.avatar !== undefined) dbUpdates.avatar_url = updates.avatar;
     if (updates.gender !== undefined) dbUpdates.gender = updates.gender;
     if (updates.cities !== undefined) {
       dbUpdates.locations = updates.cities.map((city) => ({ city, state: "" }));
     }
 
     await supabase.from("users").update(dbUpdates).eq("id", user.id);
-
-    setProfile((prev) => ({
-      ...prev,
-      ...updates,
-      ...(avatarUrl !== undefined && { avatar: avatarUrl ?? DEFAULT_AVATAR }),
-    }));
-
+    setProfile((prev) => ({ ...prev, ...updates }));
     await refreshUser();
   }
 
